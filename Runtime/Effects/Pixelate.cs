@@ -4,16 +4,18 @@ using UnityEngine.Rendering.Universal;
 
 namespace UnityEngine.Rendering.Universal.PostProcessing
 {
-	[VolumeComponentMenu("Post-processing/Invert Colors")]
-	public class InvertColors : CustomPostProcessVolumeComponent
+	[VolumeComponentMenu("Post-processing/Pixelate")]
+	public class Pixelate : CustomPostProcessVolumeComponent
 	{
-		public override string ShaderName => "Hidden/PostProcessing/InvertColors";
+		public IntParameter verticalResolution = new IntParameter(1080, false);
+
+		public override string ShaderName => "PostProcessing/Pixelate";
 
 		public override PostProcessingPassEvent PassEvent => PostProcessingPassEvent.AfterPostProcessing;
 
 		public override void ApplyProperties(Material material, RenderingData renderingData)
 		{
-			
+			material.SetInt("_VertResolution", verticalResolution.value);
 		}
 	}
 }

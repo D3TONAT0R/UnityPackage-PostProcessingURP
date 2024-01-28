@@ -21,10 +21,9 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		private readonly List<CustomPostProcessVolumeComponent> activeEffects = new List<CustomPostProcessVolumeComponent>();
 
-		public CustomPostProcessPass()
+		public CustomPostProcessPass(RenderPassEvent renderPassEvent)
 		{
-			// Set the render pass event
-			renderPassEvent = RenderPassEvent.BeforeRenderingPostProcessing;
+			this.renderPassEvent = renderPassEvent;
 		}
 
 		public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
@@ -64,17 +63,13 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		// The actual execution of the pass. This is where custom rendering occurs.
 		public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
 		{
+			if(activeEffects.Count == 0) return;
+
 			CommandBuffer cmd = CommandBufferPool.Get("Custom Post Processing");
 			cmd.Clear();
 
-			// This holds all the current Volumes information
-			// which we will need later
-			var stack = VolumeManager.instance.stack;
-
-			// Starts with the camera source
 			latestDest = source;
 
-			//---Custom effects here---
 			int count = activeEffects.Count;
 			for(int i = 0; i < count; i++)
 			{
@@ -82,7 +77,6 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 				BlitTo(cmd, material, pass);
 			}
 
-			// DONE! Now that we have processed all our custom effects, applies the final result to camera
 			Blit(cmd, latestDest, source);
 
 			context.ExecuteCommandBuffer(cmd);
@@ -96,7 +90,14 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 				.GetField("components", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).GetValue(stack);
 			foreach(var kv in components)
 			{
-				if(typeof(CustomPostProcessVolumeComponent).IsAssignableFrom(kv.Key)) yield return (CustomPostProcessVolumeComponent)kv.Value;
+				if(typeof(CustomPostProcessVolumeComponent).IsAssignableFrom(kv.Key))
+				{
+					var comp = (CustomPostProcessVolumeComponent)kv.Value;
+					if((int)comp.PassEvent == (int)renderPassEvent)
+					{
+						yield return (CustomPostProcessVolumeComponent)kv.Value;
+					}
+				}
 			}
 		}
 

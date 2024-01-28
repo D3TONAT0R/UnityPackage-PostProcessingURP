@@ -4,8 +4,7 @@ using UnityEngine.Rendering.Universal;
 
 namespace UnityEngine.Rendering.Universal.PostProcessing
 {
-	[VolumeComponentMenu("Custom Post Processing/Dither")]
-	//[AlwaysIncludeShader("PostProcessing/Dither")]
+	[VolumeComponentMenu("Post-processing/Dither")]
 	public class Dither : CustomPostProcessVolumeComponent
 	{
 		public TextureParameter ditherTexture = new TextureParameter(null);
@@ -15,6 +14,8 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		public ClampedFloatParameter gammaCorrection = new ClampedFloatParameter(1f, 0, 1);
 
 		public override string ShaderName => "Hidden/PostProcessing/Dither";
+
+		public override PostProcessingPassEvent PassEvent => PostProcessingPassEvent.AfterPostProcessing;
 
 		private static Texture2D DefaultDitherTexture
 		{

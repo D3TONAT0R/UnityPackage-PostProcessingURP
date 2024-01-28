@@ -4,9 +4,17 @@ using UnityEngine.Rendering.Universal;
 
 namespace UnityEngine.Rendering.Universal.PostProcessing
 {
+	public enum PostProcessingPassEvent
+	{
+		BeforeSkybox = RenderPassEvent.BeforeRenderingSkybox,
+		BeforeTransparents = RenderPassEvent.BeforeRenderingTransparents,
+		BeforePostProcessing = RenderPassEvent.BeforeRenderingPostProcessing,
+		AfterPostProcessing = RenderPassEvent.AfterRenderingPostProcessing
+	}
+
 	public abstract class CustomPostProcessVolumeComponent : VolumeComponent, IPostProcessComponent
 	{
-		public ClampedFloatParameter blend = new ClampedFloatParameter(1, 0, 1, true);
+		public ClampedFloatParameter blend = new ClampedFloatParameter(0f, 0, 1, true);
 
 		public abstract string ShaderName { get; }
 
@@ -15,6 +23,8 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		public virtual bool IgnorePostProcessingFlag => false;
 
 		public virtual ScriptableRenderPassInput Requirements => ScriptableRenderPassInput.Color;
+
+		public abstract PostProcessingPassEvent PassEvent { get; }
 
 		private Material material;
 
