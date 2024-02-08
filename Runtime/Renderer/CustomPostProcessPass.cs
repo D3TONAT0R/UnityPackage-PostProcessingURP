@@ -11,36 +11,31 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		// Used to render from camera to post processings
 		// back and forth, until we render the final image to
 		// the camera
-		RenderTargetIdentifier source;
-		RenderTargetIdentifier destinationA;
-		RenderTargetIdentifier destinationB;
-		RenderTargetIdentifier latestDest;
-
-		readonly int temporaryRTIdA = Shader.PropertyToID("_TempRT_A");
-		readonly int temporaryRTIdB = Shader.PropertyToID("_TempRT_B");
+		private RenderTextureDescriptor destinationDescriptor;
+		private RTHandle destinationAHandle;
+		private RTHandle destinationBHandle;
 
 		private readonly List<CustomPostProcessVolumeComponent> activeEffects = new List<CustomPostProcessVolumeComponent>();
 
 		public CustomPostProcessPass(RenderPassEvent renderPassEvent)
 		{
 			this.renderPassEvent = renderPassEvent;
+			destinationDescriptor = new RenderTextureDescriptor(Screen.width, Screen.height, RenderTextureFormat.Default, 0);
+		}
+
+		public override void Configure(CommandBuffer cmd, RenderTextureDescriptor cameraTextureDescriptor)
+		{
+			// Set the texture size to be the same as the camera target size.
+			destinationDescriptor.width = cameraTextureDescriptor.width;
+			destinationDescriptor.height = cameraTextureDescriptor.height;
+
+			// Check if the descriptor has changed, and reallocate the RTHandle if necessary
+			RenderingUtils.ReAllocateIfNeeded(ref destinationAHandle, destinationDescriptor);
+			RenderingUtils.ReAllocateIfNeeded(ref destinationBHandle, destinationDescriptor);
 		}
 
 		public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
 		{
-			// Grab the camera target descriptor. We will use this when creating a temporary render texture.
-			RenderTextureDescriptor descriptor = renderingData.cameraData.cameraTargetDescriptor;
-			descriptor.depthBufferBits = 0;
-
-			var renderer = renderingData.cameraData.renderer;
-			source = renderer.cameraColorTargetHandle;
-
-			// Create a temporary render texture using the descriptor from above.
-			cmd.GetTemporaryRT(temporaryRTIdA, descriptor, FilterMode.Bilinear);
-			destinationA = new RenderTargetIdentifier(temporaryRTIdA);
-			cmd.GetTemporaryRT(temporaryRTIdB, descriptor, FilterMode.Bilinear);
-			destinationB = new RenderTargetIdentifier(temporaryRTIdB);
-
 			var stack = VolumeManager.instance.stack;
 
 			var requirements = ScriptableRenderPassInput.Color;
@@ -65,20 +60,27 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		{
 			if(activeEffects.Count == 0) return;
 
+			//Get a CommandBuffer from pool.
 			CommandBuffer cmd = CommandBufferPool.Get("Custom Post Processing");
-			cmd.Clear();
 
-			latestDest = source;
+			RTHandle cameraTargetHandle = renderingData.cameraData.renderer.cameraColorTargetHandle;
+			RTHandle lastTarget = cameraTargetHandle;
 
 			int count = activeEffects.Count;
 			for(int i = 0; i < count; i++)
 			{
 				activeEffects[i].Setup(renderingData, out var material, out int pass);
-				BlitTo(cmd, material, pass);
+				var from = lastTarget;
+				var to = lastTarget == destinationAHandle ? destinationBHandle : destinationAHandle;
+				lastTarget = to;
+				material.SetTexture("_MainTex", from);
+				Blit(cmd, from, to, material, 0);
 			}
 
-			Blit(cmd, latestDest, source);
+			// Blit from the last temporary render texture back to the camera target,
+			Blit(cmd, lastTarget, cameraTargetHandle);
 
+			//Execute the command buffer and release it back to the pool.
 			context.ExecuteCommandBuffer(cmd);
 			CommandBufferPool.Release(cmd);
 		}
@@ -101,20 +103,10 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			}
 		}
 
-		void BlitTo(CommandBuffer cmd, Material mat, int pass)
+		public void Dispose()
 		{
-			var first = latestDest;
-			var last = first == destinationA ? destinationB : destinationA;
-			Blit(cmd, first, last, mat, pass);
-
-			latestDest = last;
-		}
-
-		//Cleans the temporary RTs when we don't need them anymore
-		public override void OnCameraCleanup(CommandBuffer cmd)
-		{
-			cmd.ReleaseTemporaryRT(temporaryRTIdA);
-			cmd.ReleaseTemporaryRT(temporaryRTIdB);
+			if(destinationAHandle != null) destinationAHandle.Release();
+			if(destinationBHandle != null) destinationBHandle.Release();
 		}
 	} 
 }
