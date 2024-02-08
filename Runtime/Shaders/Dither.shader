@@ -13,10 +13,13 @@ Shader "Hidden/PostProcessing/Dither"
             Pass
             {
                 HLSLPROGRAM
-                #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SurfaceInput.hlsl"
+                #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+                // The Blit.hlsl file provides the vertex shader (Vert),
+                // the input structure (Attributes), and the output structure (Varyings)
+                #include "Packages/com.unity.render-pipelines.core/Runtime/Utilities/Blit.hlsl"
 
-                #pragma vertex vert
-                #pragma fragment frag
+                #pragma vertex Vert
+                #pragma fragment Frag
 
                 half _Blend;
 
@@ -29,32 +32,6 @@ Shader "Hidden/PostProcessing/Dither"
                 half _DownScale;
                 int _ColorBitDepth;
                 half _GammaCorrection;
-
-                struct Attributes
-                {
-                    float4 positionOS       : POSITION;
-                    float2 uv               : TEXCOORD0;
-                };
-
-                struct Varyings
-                {
-                    float2 uv        : TEXCOORD0;
-                    float4 vertex : SV_POSITION;
-                    UNITY_VERTEX_OUTPUT_STEREO
-                };
-
-
-                Varyings vert(Attributes input)
-                {
-                    Varyings output = (Varyings)0;
-                    UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
-
-                    VertexPositionInputs vertexInput = GetVertexPositionInputs(input.positionOS.xyz);
-                    output.vertex = vertexInput.positionCS;
-                    output.uv = input.uv;
-
-                    return output;
-                }
 
                 float2 pixelate(float2 coord, float2 resolution) {
                     coord *= resolution;
@@ -84,28 +61,28 @@ Shader "Hidden/PostProcessing/Dither"
                     return result;
                 }
 
-                float4 frag(Varyings i) : SV_Target
+                float4 Frag(Varyings i) : SV_Target
                 {
                     float2 pixelatedTexCoord;
                     if (_DownScale > 1) {
-                        pixelatedTexCoord = Pixelate(i.uv, _ScreenParams.xy / _DownScale);
+                        pixelatedTexCoord = Pixelate(i.texcoord, _ScreenParams.xy / _DownScale);
                     }
                     else {
-                        pixelatedTexCoord = i.uv;
+                        pixelatedTexCoord = i.texcoord;
                     }
                     float4 color = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, pixelatedTexCoord);
-                    float2 pixelCoord = i.uv.xy;
+                    float2 pixelCoord = i.texcoord.xy;
                     float aspect = _ScreenParams.x / _ScreenParams.y;
                     pixelCoord.x *= aspect;
                     pixelCoord *= _ScreenParams.y;
                     pixelCoord /= _DitherTexSize * _DownScale;
                     float ditherValue = SAMPLE_TEXTURE2D(_DitherTex, sampler_DitherTex, pixelCoord).r * 0.9 + 0.1;
                     float4 dithered = float4(dither(ditherValue, color.r), dither(ditherValue, color.g), dither(ditherValue, color.b), color.a);
-                    return lerp(color, dithered, _Blend);
+                    float4 originalColor = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.texcoord);
+                    return lerp(originalColor, dithered, _Blend);
                 }
 
                 ENDHLSL
             }
         }
-            FallBack "Diffuse"
 }
