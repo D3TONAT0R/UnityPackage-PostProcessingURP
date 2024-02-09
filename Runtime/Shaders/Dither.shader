@@ -2,7 +2,6 @@ Shader "Hidden/PostProcessing/Dither"
 {
     Properties
     {
-        _MainTex("Main Texture", 2D) = "white" {}
         _VertResolution("Vertical Resolution", Int) = 270
         _Blend("Blend", Range(0,1)) = 1.0
     }
@@ -23,8 +22,6 @@ Shader "Hidden/PostProcessing/Dither"
 
                 half _Blend;
 
-                TEXTURE2D(_MainTex);
-                SAMPLER(sampler_MainTex);
                 TEXTURE2D(_DitherTex);
                 SAMPLER(sampler_DitherTex);
 
@@ -70,7 +67,7 @@ Shader "Hidden/PostProcessing/Dither"
                     else {
                         pixelatedTexCoord = i.texcoord;
                     }
-                    float4 color = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, pixelatedTexCoord);
+                    float4 color = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, pixelatedTexCoord);
                     float2 pixelCoord = i.texcoord.xy;
                     float aspect = _ScreenParams.x / _ScreenParams.y;
                     pixelCoord.x *= aspect;
@@ -78,7 +75,7 @@ Shader "Hidden/PostProcessing/Dither"
                     pixelCoord /= _DitherTexSize * _DownScale;
                     float ditherValue = SAMPLE_TEXTURE2D(_DitherTex, sampler_DitherTex, pixelCoord).r * 0.9 + 0.1;
                     float4 dithered = float4(dither(ditherValue, color.r), dither(ditherValue, color.g), dither(ditherValue, color.b), color.a);
-                    float4 originalColor = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.texcoord);
+                    float4 originalColor = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, i.texcoord);
                     return lerp(originalColor, dithered, _Blend);
                 }
 

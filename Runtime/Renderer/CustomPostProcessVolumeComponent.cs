@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
@@ -18,7 +19,10 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public abstract string ShaderName { get; }
 
-		public virtual int PassIndex => 0;
+		public virtual void AddPasses(List<int> passes)
+		{
+			passes.Add(0);
+		}
 
 		public virtual bool IgnorePostProcessingFlag => false;
 
@@ -32,7 +36,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public virtual bool IsTileCompatible() => true;
 
-		public void Setup(RenderingData renderingData, out Material blitMaterial, out int pass)
+		public void Setup(RenderingData renderingData, out Material blitMaterial, List<int> passes)
 		{
 			var shader = Shader.Find(ShaderName);
 			if(!shader)
@@ -43,7 +47,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			material.SetFloat("_Blend", blend.value);
 			ApplyProperties(material, renderingData);
 			blitMaterial = material;
-			pass = PassIndex;
+			AddPasses(passes);
 		}
 
 		public abstract void ApplyProperties(Material material, RenderingData renderingData);

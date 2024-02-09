@@ -6246,10 +6246,10 @@
     "m_Guid": {
         "m_GuidSerialized": "be0b730b-3a6a-4043-ae9c-2a9e0a3cfac5"
     },
-    "m_Name": "_MainTex",
+    "m_Name": "BlitTexture",
     "m_DefaultRefNameVersion": 1,
-    "m_RefNameGeneratedByDisplayName": "_MainTex",
-    "m_DefaultReferenceName": "_MainTex",
+    "m_RefNameGeneratedByDisplayName": "BlitTexture",
+    "m_DefaultReferenceName": "_BlitTexture",
     "m_OverrideReferenceName": "",
     "m_GeneratePropertyBlock": true,
     "m_UseCustomSlotLabel": false,
@@ -7960,7 +7960,7 @@
     "m_Type": "UnityEditor.ShaderGraph.Texture2DMaterialSlot",
     "m_ObjectId": "f07cb0d7cd7946a9879adc36070a5676",
     "m_Id": 0,
-    "m_DisplayName": "_MainTex",
+    "m_DisplayName": "BlitTexture",
     "m_SlotType": 1,
     "m_Hidden": false,
     "m_ShaderOutputName": "Out",

@@ -15,6 +15,8 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		private RTHandle destinationAHandle;
 		private RTHandle destinationBHandle;
 
+		private List<int> passIndices = new List<int>();
+
 		private readonly List<CustomPostProcessVolumeComponent> activeEffects = new List<CustomPostProcessVolumeComponent>();
 
 		public CustomPostProcessPass(RenderPassEvent renderPassEvent)
@@ -30,8 +32,8 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			destinationDescriptor.height = cameraTextureDescriptor.height;
 
 			// Check if the descriptor has changed, and reallocate the RTHandle if necessary
-			RenderingUtils.ReAllocateIfNeeded(ref destinationAHandle, destinationDescriptor);
-			RenderingUtils.ReAllocateIfNeeded(ref destinationBHandle, destinationDescriptor);
+			RenderingUtils.ReAllocateIfNeeded(ref destinationAHandle, destinationDescriptor, name: "Temp_A");
+			RenderingUtils.ReAllocateIfNeeded(ref destinationBHandle, destinationDescriptor, name: "Temp_B");
 		}
 
 		public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
@@ -69,12 +71,20 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			int count = activeEffects.Count;
 			for(int i = 0; i < count; i++)
 			{
-				activeEffects[i].Setup(renderingData, out var material, out int pass);
-				var from = lastTarget;
-				var to = lastTarget == destinationAHandle ? destinationBHandle : destinationAHandle;
-				lastTarget = to;
-				material.SetTexture("_MainTex", from);
-				Blit(cmd, from, to, material, 0);
+				passIndices.Clear();
+				activeEffects[i].Setup(renderingData, out var material, passIndices);
+				int passCount = passIndices.Count;
+				if(passCount == 0) Debug.LogWarning($"Effect does not have any passes set: "+activeEffects[i].GetType());
+				for(int j = 0; j < passCount; j++)
+				{
+					int passIndex = passIndices[j];
+					var from = lastTarget;
+					var to = lastTarget == destinationAHandle ? destinationBHandle : destinationAHandle;
+					lastTarget = to;
+					//cmd.SetGlobalTexture("_MainTex", from);
+					//material.SetTexture("_MainTex", from);
+					Blit(cmd, from, to, material, passIndex);
+				}
 			}
 
 			// Blit from the last temporary render texture back to the camera target,
