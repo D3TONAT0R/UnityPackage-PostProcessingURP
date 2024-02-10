@@ -8,6 +8,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 	[VolumeComponentMenu("Post-processing/Blur")]
 	public class BoxBlur : CustomPostProcessVolumeComponent
 	{
+		public PassEventParameter injectionPoint = new PassEventParameter(PostProcessingPassEvent.AfterPostProcessing, false);
 		public ClampedFloatParameter horizontalBlur = new ClampedFloatParameter(0f, 0, 0.1f, false);
 		public ClampedFloatParameter verticalBlur = new ClampedFloatParameter(0f, 0, 0.1f, false);
 
@@ -24,7 +25,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			if(horizontalBlur.value > 0) passes.Add(1);
 		}
 
-		public override PostProcessingPassEvent PassEvent => PostProcessingPassEvent.AfterPostProcessing;
+		public override PostProcessingPassEvent PassEvent => injectionPoint.value;
 
 		public override void ApplyProperties(Material material, RenderingData renderingData)
 		{

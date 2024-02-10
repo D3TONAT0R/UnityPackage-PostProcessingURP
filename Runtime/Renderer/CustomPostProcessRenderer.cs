@@ -6,54 +6,88 @@ using UnityEngine.Rendering.Universal;
 namespace UnityEngine.Rendering.Universal.PostProcessing
 {
 	[System.Serializable]
-	public class CustomPostProcessRenderer : ScriptableRendererFeature
+	public class EffectOrderingList : ISerializationCallbackReceiver
 	{
-		[System.Serializable]
-		public class CustomPostProcessRef : ISerializationCallbackReceiver
+		private List<System.Type> effectTypes = new List<System.Type>();
+
+		[SerializeField]
+		private List<string> serializedTypeNames = new List<string>();
+
+		public bool AddIfMissing(System.Type effectType)
 		{
-			public string assemblyQualifiedName;
-
-			public System.Type Type { get; private set; }
-
-			public CustomPostProcessRef(System.Type type)
+			if(!effectTypes.Contains(effectType))
 			{
-				Assert.IsNotNull(type);
-				Type = type;
+				effectTypes.Add(effectType);
+				return true;
 			}
-
-			public void OnAfterDeserialize()
+			else
 			{
-				Type = System.Type.GetType(assemblyQualifiedName);
-			}
-
-			public void OnBeforeSerialize()
-			{
-				assemblyQualifiedName = Type?.AssemblyQualifiedName ?? "";
+				return false;
 			}
 		}
 
+		public int GetPosition(System.Type effectType)
+		{
+			int index = effectTypes.IndexOf(effectType);
+			if(index >= 0) return index;
+			else return effectTypes.Count - 1;
+		}
+
+		public void OnAfterDeserialize()
+		{
+			effectTypes.Clear();
+			foreach(var s in serializedTypeNames)
+			{
+				var t = System.Type.GetType(s);
+				if(t != null)
+				{
+					effectTypes.Add(t);
+				}
+				else
+				{
+					Debug.LogError($"Failed to find effect of type '{s}', removing it from the ordering list.");
+				}
+			}
+		}
+
+		public void OnBeforeSerialize()
+		{
+			serializedTypeNames.Clear();
+			foreach(var t in effectTypes)
+			{
+				serializedTypeNames.Add(t.AssemblyQualifiedName);
+			}
+		}
+	}
+
+	[System.Serializable]
+	public class CustomPostProcessRenderer : ScriptableRendererFeature
+	{
 		[System.Serializable]
 		public class EffectOrdering
 		{
-			public List<CustomPostProcessRef> beforeSkybox = new List<CustomPostProcessRef>();
-			public List<CustomPostProcessRef> beforeTransparents = new List<CustomPostProcessRef>();
-			public List<CustomPostProcessRef> beforePostProcess = new List<CustomPostProcessRef>();
-			public List<CustomPostProcessRef> afterPostProcess = new List<CustomPostProcessRef>();
+			public EffectOrderingList beforeSkybox = new EffectOrderingList();
+			public EffectOrderingList beforeTransparents = new EffectOrderingList();
+			public EffectOrderingList beforePostProcess = new EffectOrderingList();
+			public EffectOrderingList afterPostProcess = new EffectOrderingList();
+			public EffectOrderingList afterRendering = new EffectOrderingList();
 		}
 
 		private CustomPostProcessPass beforeSkyboxPass;
 		private CustomPostProcessPass beforeTransparentsPass;
 		private CustomPostProcessPass beforePostProcessPass;
 		private CustomPostProcessPass afterPostProcessPass;
+		private CustomPostProcessPass afterRenderingPass;
 
 		public EffectOrdering effectOrdering = new EffectOrdering();
 
 		public override void Create()
 		{
-			beforeSkyboxPass = new CustomPostProcessPass(RenderPassEvent.BeforeRenderingSkybox);
-			beforeTransparentsPass = new CustomPostProcessPass(RenderPassEvent.BeforeRenderingTransparents);
-			beforePostProcessPass = new CustomPostProcessPass(RenderPassEvent.BeforeRenderingPostProcessing);
-			afterPostProcessPass = new CustomPostProcessPass(RenderPassEvent.AfterRenderingPostProcessing);
+			beforeSkyboxPass = new CustomPostProcessPass(RenderPassEvent.BeforeRenderingSkybox, effectOrdering.beforeSkybox);
+			beforeTransparentsPass = new CustomPostProcessPass(RenderPassEvent.BeforeRenderingTransparents, effectOrdering.beforeTransparents);
+			beforePostProcessPass = new CustomPostProcessPass(RenderPassEvent.BeforeRenderingPostProcessing, effectOrdering.beforePostProcess);
+			afterPostProcessPass = new CustomPostProcessPass(RenderPassEvent.AfterRenderingPostProcessing, effectOrdering.afterPostProcess);
+			afterRenderingPass = new CustomPostProcessPass(RenderPassEvent.AfterRendering, effectOrdering.afterRendering);
 		}
 
 		public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
@@ -62,6 +96,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			renderer.EnqueuePass(beforeTransparentsPass);
 			renderer.EnqueuePass(beforePostProcessPass);
 			renderer.EnqueuePass(afterPostProcessPass);
+			renderer.EnqueuePass(afterRenderingPass);
 		}
 	}
 }

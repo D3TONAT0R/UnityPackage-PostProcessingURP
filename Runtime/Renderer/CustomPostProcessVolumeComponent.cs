@@ -1,7 +1,4 @@
 using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.Rendering;
-using UnityEngine.Rendering.Universal;
 
 namespace UnityEngine.Rendering.Universal.PostProcessing
 {
@@ -10,11 +7,22 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		BeforeSkybox = RenderPassEvent.BeforeRenderingSkybox,
 		BeforeTransparents = RenderPassEvent.BeforeRenderingTransparents,
 		BeforePostProcessing = RenderPassEvent.BeforeRenderingPostProcessing,
-		AfterPostProcessing = RenderPassEvent.AfterRenderingPostProcessing
+		AfterPostProcessing = RenderPassEvent.AfterRenderingPostProcessing,
+		AfterRendering = RenderPassEvent.AfterRendering
+	}
+
+	[System.Serializable]
+	public class PassEventParameter : VolumeParameter<PostProcessingPassEvent>
+	{
+		public PassEventParameter(PostProcessingPassEvent value, bool overrideState) : base(value, overrideState)
+		{
+
+		}
 	}
 
 	public abstract class CustomPostProcessVolumeComponent : VolumeComponent, IPostProcessComponent
 	{
+		[Space(10)]
 		public ClampedFloatParameter blend = new ClampedFloatParameter(0f, 0, 1, true);
 
 		public abstract string ShaderName { get; }

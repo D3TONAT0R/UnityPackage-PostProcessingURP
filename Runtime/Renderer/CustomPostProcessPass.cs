@@ -1,7 +1,4 @@
 using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.Rendering;
-using UnityEngine.Rendering.Universal;
 
 namespace UnityEngine.Rendering.Universal.PostProcessing
 {
@@ -15,13 +12,15 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		private RTHandle destinationAHandle;
 		private RTHandle destinationBHandle;
 
-		private List<int> passIndices = new List<int>();
-
 		private readonly List<CustomPostProcessVolumeComponent> activeEffects = new List<CustomPostProcessVolumeComponent>();
+		private readonly List<int> passIndices = new List<int>();
 
-		public CustomPostProcessPass(RenderPassEvent renderPassEvent)
+		private readonly EffectOrderingList orderingListRef;
+
+		public CustomPostProcessPass(RenderPassEvent renderPassEvent, EffectOrderingList ordering)
 		{
 			this.renderPassEvent = renderPassEvent;
+			orderingListRef = ordering;
 			destinationDescriptor = new RenderTextureDescriptor(Screen.width, Screen.height, RenderTextureFormat.Default, 0);
 		}
 
@@ -53,8 +52,19 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 					requirements |= customEffect.Requirements;
 				}
 			}
+			OrderEffects();
 
 			ConfigureInput(requirements);
+		}
+
+		private void OrderEffects()
+		{
+			for(int i = 0; i < activeEffects.Count; i++)
+			{
+				var type = activeEffects[i].GetType();
+				orderingListRef.AddIfMissing(type);
+			}
+			activeEffects.Sort((x, y) => orderingListRef.GetPosition(x.GetType()) - orderingListRef.GetPosition(y.GetType()));
 		}
 
 		// The actual execution of the pass. This is where custom rendering occurs.
