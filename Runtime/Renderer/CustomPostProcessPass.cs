@@ -81,20 +81,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			int count = activeEffects.Count;
 			for(int i = 0; i < count; i++)
 			{
-				passIndices.Clear();
-				activeEffects[i].Setup(renderingData, out var material, passIndices);
-				int passCount = passIndices.Count;
-				if(passCount == 0) Debug.LogWarning($"Effect does not have any passes set: "+activeEffects[i].GetType());
-				for(int j = 0; j < passCount; j++)
-				{
-					int passIndex = passIndices[j];
-					var from = lastTarget;
-					var to = lastTarget == destinationAHandle ? destinationBHandle : destinationAHandle;
-					lastTarget = to;
-					//cmd.SetGlobalTexture("_MainTex", from);
-					//material.SetTexture("_MainTex", from);
-					Blit(cmd, from, to, material, passIndex);
-				}
+				RenderEffect(activeEffects[i], renderingData, cmd, ref lastTarget);
 			}
 
 			// Blit from the last temporary render texture back to the camera target,
@@ -103,6 +90,22 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			//Execute the command buffer and release it back to the pool.
 			context.ExecuteCommandBuffer(cmd);
 			CommandBufferPool.Release(cmd);
+		}
+
+		private void RenderEffect(CustomPostProcessVolumeComponent effect, RenderingData renderingData, CommandBuffer cmd, ref RTHandle lastTarget)
+		{
+			passIndices.Clear();
+			effect.Setup(renderingData, passIndices);
+			int passCount = passIndices.Count;
+			if(passCount == 0) Debug.LogWarning($"Effect does not have any passes set: " + effect.GetType());
+			for(int j = 0; j < passCount; j++)
+			{
+				int passIndex = passIndices[j];
+				var from = lastTarget;
+				var to = lastTarget == destinationAHandle ? destinationBHandle : destinationAHandle;
+				effect.Render(this, renderingData, cmd, from, to, passIndex);
+				lastTarget = to;
+			}
 		}
 
 		//TODO: very inefficient when performed every frame

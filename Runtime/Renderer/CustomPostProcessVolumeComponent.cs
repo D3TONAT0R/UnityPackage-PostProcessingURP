@@ -38,24 +38,39 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public abstract PostProcessingPassEvent PassEvent { get; }
 
-		private Material material;
+		private Material blitMaterial;
 
 		public virtual bool IsActive() => blend.value > 0;
 
 		public virtual bool IsTileCompatible() => true;
 
-		public void Setup(RenderingData renderingData, out Material blitMaterial, List<int> passes)
+		public virtual void Setup(RenderingData renderingData, List<int> passes)
 		{
-			var shader = Shader.Find(ShaderName);
-			if(!shader)
+			SetupMaterial(renderingData);
+			if(blitMaterial)
 			{
-				Debug.Log($"Failed to find custom post processing shader '{ShaderName}'");
+				blitMaterial.SetFloat("_Blend", blend.value);
+				ApplyProperties(blitMaterial, renderingData);
 			}
-			if(!material) material = new Material(shader);
-			material.SetFloat("_Blend", blend.value);
-			ApplyProperties(material, renderingData);
-			blitMaterial = material;
 			AddPasses(passes);
+		}
+
+		protected virtual void SetupMaterial(RenderingData renderingData)
+		{
+			if(!blitMaterial && ShaderName != null)
+			{
+				var shader = Shader.Find(ShaderName);
+				if(!shader)
+				{
+					Debug.Log($"Failed to find custom post processing shader '{ShaderName}'");
+				}
+				if(!blitMaterial) blitMaterial = new Material(shader);
+			}
+		}
+
+		public virtual void Render(CustomPostProcessPass feature, RenderingData renderingData, CommandBuffer cmd, RTHandle from, RTHandle to, int passIndex)
+		{
+			feature.Blit(cmd, from, to, blitMaterial, passIndex);
 		}
 
 		public abstract void ApplyProperties(Material material, RenderingData renderingData);
