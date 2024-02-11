@@ -38,7 +38,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public abstract PostProcessingPassEvent PassEvent { get; }
 
-		private Material blitMaterial;
+		protected Material blitMaterial;
 
 		public virtual bool IsActive() => blend.value > 0;
 

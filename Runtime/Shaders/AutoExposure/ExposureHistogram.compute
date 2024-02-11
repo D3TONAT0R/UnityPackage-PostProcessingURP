@@ -6,7 +6,7 @@
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 //#include "Packages/com.unity.postprocessing/PostProcessing/Shaders/Colors.hlsl"
-#include "Packages/com.github.d3tonat0r.postprocessingurp/Runtime/Shaders/CGIncludes/ExposureHistogram.hlsl"
+#include "Packages/com.github.d3tonat0r.postprocessingurp/Runtime/Shaders/AutoExposure/ExposureHistogram.hlsl"
 
 RWStructuredBuffer<uint> _HistogramBuffer;
 Texture2D<float4> _Source;

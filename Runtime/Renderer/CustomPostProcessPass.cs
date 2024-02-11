@@ -29,6 +29,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			// Set the texture size to be the same as the camera target size.
 			destinationDescriptor.width = cameraTextureDescriptor.width;
 			destinationDescriptor.height = cameraTextureDescriptor.height;
+			destinationDescriptor.colorFormat = cameraTextureDescriptor.colorFormat;
 
 			// Check if the descriptor has changed, and reallocate the RTHandle if necessary
 			RenderingUtils.ReAllocateIfNeeded(ref destinationAHandle, destinationDescriptor, name: "Temp_A");
@@ -73,7 +74,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			if(activeEffects.Count == 0) return;
 
 			//Get a CommandBuffer from pool.
-			CommandBuffer cmd = CommandBufferPool.Get("Custom Post Processing");
+			CommandBuffer cmd = CommandBufferPool.Get("CustomPostProcess "+renderPassEvent);
 
 			RTHandle cameraTargetHandle = renderingData.cameraData.renderer.cameraColorTargetHandle;
 			RTHandle lastTarget = cameraTargetHandle;

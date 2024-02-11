@@ -86,16 +86,19 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		const int k_NumEyes = 2;
 		const int k_NumAutoExposureTextures = 2;
 
-		//private static readonly RenderTexture[][] m_AutoExposurePool = new RenderTexture[k_NumEyes][];
-		//private static int[] m_AutoExposurePingPong = new int[k_NumEyes];
-		//private RenderTexture m_CurrentAutoExposure;
+		private static readonly RenderTexture[][] m_AutoExposurePool = new RenderTexture[k_NumEyes][];
+		private static int[] m_AutoExposurePingPong = new int[k_NumEyes];
+		private RenderTexture m_CurrentAutoExposure;
 
-		private RenderTextureDescriptor intermediateDescriptor;
-		private RTHandle intermediate;
+		private ulong frameNumber = 0;
+
+		//private RenderTextureDescriptor intermediateDescriptor;
+		//private RTHandle intermediate;
 
 		private Dictionary<UniversalAdditionalCameraData, LogHistogram> logHistograms = new Dictionary<UniversalAdditionalCameraData, LogHistogram>();
 
-		public override string ShaderName => null;
+		public override string ShaderName => "Hidden/PostProcessing/AutoExposureBlit";
+
 		public override PostProcessingPassEvent PassEvent => PostProcessingPassEvent.BeforePostProcessing;
 
 		public override void ApplyProperties(Material material, RenderingData renderingData) { }
@@ -110,24 +113,34 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		protected override void OnEnable()
 		{
-			/*
+			base.OnEnable();
 			for(int eye = 0; eye < k_NumEyes; eye++)
 			{
 				m_AutoExposurePool[eye] = new RenderTexture[k_NumAutoExposureTextures];
 				m_AutoExposurePingPong[eye] = 0;
 			}
-			*/
+			/*
 			intermediateDescriptor = new RenderTextureDescriptor(Screen.width, Screen.height, RenderTextureFormat.Default, 0)
 			{
 				enableRandomWrite = true
 			};
+			*/
+		}
+
+		void CheckTexture(int eye, int id)
+		{
+			if(m_AutoExposurePool[eye][id] == null || !m_AutoExposurePool[eye][id].IsCreated())
+			{
+				m_AutoExposurePool[eye][id] = new RenderTexture(1, 1, 0, RenderTextureFormat.RFloat) { enableRandomWrite = true };
+				m_AutoExposurePool[eye][id].Create();
+			}
 		}
 
 		public override void Setup(RenderingData renderingData, List<int> passes)
 		{
 			base.Setup(renderingData, passes);
 
-			RenderingUtils.ReAllocateIfNeeded(ref intermediate, intermediateDescriptor, name: "AutoExpo_Intermediate");
+			//RenderingUtils.ReAllocateIfNeeded(ref intermediate, intermediateDescriptor, name: "AutoExpo_Intermediate");
 		}
 
 		public override void AddPasses(List<int> passes)
@@ -135,21 +148,21 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			if(PostProcessResources.Instance.computeShaders.autoExposure) passes.Add(0);
 		}
 
-		public override void Render(CustomPostProcessPass feature, RenderingData renderingData, CommandBuffer cmd, RTHandle from, RTHandle to, int passIndex)
+		public override void Render(CustomPostProcessPass feature, RenderingData renderingData, CommandBuffer cmd, RTHandle source, RTHandle destination, int passIndex)
 		{
 			var urpCameraData = renderingData.cameraData.camera.GetUniversalAdditionalCameraData();
 			var logHistogram = GetLogHistogram(urpCameraData);
 
-			logHistogram.Generate(renderingData, cmd, from);
+			logHistogram.Generate(renderingData, cmd, source);
 
 			//return;
 			cmd.BeginSample("AutoExposureLookup");
 
 			var computeShader = PostProcessResources.Instance.computeShaders.autoExposure;
-			// Prepare autoExpo texture pool
-			//CheckTexture(context.xrActiveEye, 0);
-			//CheckTexture(context.xrActiveEye, 1);
 			int xrActiveEye = 0;
+			// Prepare autoExpo texture pool
+			CheckTexture(xrActiveEye, 0);
+			CheckTexture(xrActiveEye, 1);
 
 			// Make sure filtering values are correct to avoid apocalyptic consequences
 			float lowPercent = filtering.value.x;
@@ -166,7 +179,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 			// Compute average luminance & auto exposure
 			bool resetHistory = urpCameraData.resetHistory;
-			bool firstFrame = resetHistory || !Application.isPlaying;
+			bool firstFrame = resetHistory || frameNumber == 0 || !Application.isPlaying;
 
 			string adaptation;
 			if(firstFrame || eyeAdaptation.value == EyeAdaptation.Fixed)
@@ -184,18 +197,17 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			{
 				// We don't want eye adaptation when not in play mode because the GameView isn't
 				// animated, thus making it harder to tweak. Just use the final auto exposure value.
-				//m_CurrentAutoExposure = m_AutoExposurePool[xrActiveEye][0];
-				cmd.SetComputeTextureParam(computeShader, kernel, "_Destination", intermediate);
+				m_CurrentAutoExposure = m_AutoExposurePool[xrActiveEye][0];
+				cmd.SetComputeTextureParam(computeShader, kernel, "_Destination", m_CurrentAutoExposure);
 				cmd.DispatchCompute(computeShader, kernel, 1, 1, 1);
 
 				// Copy current exposure to the other pingpong target to avoid adapting from black
 				//cmd.CopyTexture(m_AutoExposurePool[xrActiveEye][0], m_AutoExposurePool[xrActiveEye][1]);
-				//RuntimeUtilities.CopyTexture(cmd, m_AutoExposurePool[xrActiveEye][0], m_AutoExposurePool[xrActiveEye][1]);
+				cmd.CopyTexture(m_AutoExposurePool[xrActiveEye][0], m_AutoExposurePool[xrActiveEye][1]);
 				//m_ResetHistory = false;
 			}
 			else
 			{
-				/*
 				int pp = m_AutoExposurePingPong[xrActiveEye];
 				var src = m_AutoExposurePool[xrActiveEye][++pp % 2];
 				var dst = m_AutoExposurePool[xrActiveEye][++pp % 2];
@@ -205,13 +217,16 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 				cmd.DispatchCompute(computeShader, kernel, 1, 1, 1);
 
 				m_AutoExposurePingPong[xrActiveEye] = ++pp % 2;
-				*/
-				//m_CurrentAutoExposure = dst;
+				m_CurrentAutoExposure = dst;
 			}
 
-			feature.Blit(cmd, intermediate, to);
+			//feature.Blit(cmd, intermediate, to);
 			cmd.EndSample("AutoExposureLookup");
 
+			blitMaterial.SetTexture("_AutoExposureTex", m_CurrentAutoExposure);
+			feature.Blit(cmd, source, destination, blitMaterial, 0);
+
+			frameNumber++;
 			/*
 			context.autoExposureTexture = m_CurrentAutoExposure;
 			context.autoExposure = settings;
@@ -220,7 +235,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		protected override void OnDisable()
 		{
-			/*
+			base.OnDisable();
 			foreach(var rtEyeSet in m_AutoExposurePool)
 			{
 				foreach(var rt in rtEyeSet)
@@ -235,8 +250,6 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 #endif
 				}
 			}
-			*/
-			if(intermediate != null) intermediate.Release();
 		}
 
 		private float Exp2(float x)

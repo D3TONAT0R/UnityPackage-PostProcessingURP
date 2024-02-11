@@ -1,4 +1,4 @@
-Shader "Hidden/PostProcessing/BrightnessGamma"
+Shader "Hidden/PostProcessing/AutoExposureBlit"
 {
     Properties
     {
@@ -19,17 +19,20 @@ Shader "Hidden/PostProcessing/BrightnessGamma"
             #pragma fragment Frag
 
             float _Blend;
-            float _Brightness;
-            float _Gamma;
+            TEXTURE2D(_AutoExposureTex);
+
+            float2 pixelate(float2 coord, float2 resolution) {
+                coord *= resolution;
+                coord = floor(coord) + 0.5;
+                return coord / resolution;
+            }
 
             float4 Frag(Varyings i) : SV_Target
             {
                 float4 color = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, i.texcoord);
                 float4 adjusted = color;
-
-                adjusted.rgb = pow(max(adjusted.rgb, 0.001), 1.0 / _Gamma);
-		        adjusted.rgb += _Brightness - 1.0;
-
+                float autoExposure = SAMPLE_TEXTURE2D(_AutoExposureTex, sampler_LinearClamp, i.texcoord);
+                adjusted.rgb *= autoExposure;
                 return lerp(color, adjusted, _Blend);
             }
 
