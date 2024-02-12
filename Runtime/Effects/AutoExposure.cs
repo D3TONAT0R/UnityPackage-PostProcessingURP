@@ -77,6 +77,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 			public void Release()
 			{
+				if(logHistogram != null) logHistogram.Release();
 				foreach(var rtEyeSet in autoExposurePool)
 				{
 					foreach(var rt in rtEyeSet)
@@ -207,7 +208,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			maxLuminance.value = Mathf.Max(minLum, maxLum);
 
 			// Compute average luminance & auto exposure
-			bool firstFrame = resetHistory || perCameraData.frameNumber == 0 || !Application.isPlaying;
+			bool firstFrame = resetHistory || perCameraData.frameNumber == 0 || !Application.isPlaying || PostProcessResources.Instance.TryGetCustomResource<Texture2D>("mytexture", out _);
 
 			string adaptation;
 			if(firstFrame || eyeAdaptation.value == EyeAdaptation.Fixed)

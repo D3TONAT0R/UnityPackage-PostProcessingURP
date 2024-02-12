@@ -15,3 +15,4 @@ MonoBehaviour:
   computeShaders:
     autoExposure: {fileID: 7200000, guid: 34845e0ca016b7448842e965db5890a5, type: 3}
     exposureHistogram: {fileID: 7200000, guid: 8c2fcbdf9bc58664f89917f7b9d79501, type: 3}
+  customResources: []

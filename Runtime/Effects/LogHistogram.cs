@@ -8,13 +8,15 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
         // Don't forget to update 'ExposureHistogram.hlsl' if you change these values !
         const int k_Bins = 128;
 
-        public ComputeBuffer data { get; private set; }
+        public readonly ComputeBuffer data;
+
+        public LogHistogram()
+		{
+            data = new ComputeBuffer(k_Bins, sizeof(uint));
+        }
 
         public void Generate(CommandBuffer cmd, ref RenderingData renderingData, RTHandle source)
         {
-            if(data == null)
-                data = new ComputeBuffer(k_Bins, sizeof(uint));
-
             uint threadX, threadY, threadZ;
             var scaleOffsetRes = GetHistogramScaleOffsetRes(renderingData);
             var compute = PostProcessResources.Instance.computeShaders.exposureHistogram;
@@ -53,10 +55,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
         public void Release()
         {
-            if(data != null)
-                data.Release();
-
-            data = null;
+            if(data != null) data.Release();
         }
     }
 }

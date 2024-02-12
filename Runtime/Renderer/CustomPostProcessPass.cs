@@ -8,9 +8,9 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		// Used to render from camera to post processings
 		// back and forth, until we render the final image to
 		// the camera
-		private RenderTextureDescriptor destinationDescriptor;
-		private RTHandle destinationAHandle;
-		private RTHandle destinationBHandle;
+		private static RenderTextureDescriptor destinationDescriptor;
+		private static RTHandle destinationAHandle;
+		private static RTHandle destinationBHandle;
 
 		private readonly List<CustomPostProcessVolumeComponent> activeEffects = new List<CustomPostProcessVolumeComponent>();
 		private readonly List<int> passIndices = new List<int>();
