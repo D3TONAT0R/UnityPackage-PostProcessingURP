@@ -30,8 +30,70 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 	/// </summary>
 	[Serializable]
 	[VolumeComponentMenu("Post-processing/Auto Exposure")]
-	public sealed class AutoExposure : CustomPostProcessVolumeComponent
+	public class AutoExposure : CustomPostProcessVolumeComponent
 	{
+		private class PerCameraData
+		{
+			const int k_NumEyes = 2;
+			const int k_NumAutoExposureTextures = 2;
+
+			public LogHistogram logHistogram = new LogHistogram();
+
+			public readonly RenderTexture[][] autoExposurePool = new RenderTexture[k_NumEyes][];
+			public int[] autoExposurePingPong = new int[k_NumEyes];
+
+			public ulong frameNumber = 0;
+			public float lastUseTimestamp;
+
+			public PerCameraData()
+			{
+				for(int eye = 0; eye < k_NumEyes; eye++)
+				{
+					autoExposurePool[eye] = new RenderTexture[k_NumAutoExposureTextures];
+					autoExposurePingPong[eye] = 0;
+				}
+			}
+
+			public void UpdateCounter()
+			{
+				frameNumber++;
+				lastUseTimestamp = Time.realtimeSinceStartup;
+			}
+
+			public void CheckTextures(int eye)
+			{
+				CheckTexture(eye, 0);
+				CheckTexture(eye, 1);
+			}
+
+			void CheckTexture(int eye, int id)
+			{
+				if(autoExposurePool[eye][id] == null || !autoExposurePool[eye][id].IsCreated())
+				{
+					autoExposurePool[eye][id] = new RenderTexture(1, 1, 0, RenderTextureFormat.RFloat) { enableRandomWrite = true };
+					autoExposurePool[eye][id].Create();
+				}
+			}
+
+			public void Release()
+			{
+				foreach(var rtEyeSet in autoExposurePool)
+				{
+					foreach(var rt in rtEyeSet)
+					{
+#if UNITY_EDITOR
+						if(Application.isPlaying)
+							Destroy(rt);
+						else
+							DestroyImmediate(rt);
+#else
+						Destroy(rt);
+#endif
+					}
+				}
+			}
+		}
+
 		public BoolParameter enabled = new BoolParameter(false, false);
 
 		/// <summary>
@@ -83,19 +145,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		[Min(0f), Tooltip("Adaptation speed from a light to a dark environment.")]
 		public FloatParameter speedDown = new FloatParameter(1);
 
-		const int k_NumEyes = 2;
-		const int k_NumAutoExposureTextures = 2;
-
-		private static readonly RenderTexture[][] m_AutoExposurePool = new RenderTexture[k_NumEyes][];
-		private static int[] m_AutoExposurePingPong = new int[k_NumEyes];
-		private RenderTexture m_CurrentAutoExposure;
-
-		private ulong frameNumber = 0;
-
-		//private RenderTextureDescriptor intermediateDescriptor;
-		//private RTHandle intermediate;
-
-		private Dictionary<UniversalAdditionalCameraData, LogHistogram> logHistograms = new Dictionary<UniversalAdditionalCameraData, LogHistogram>();
+		private readonly Dictionary<UniversalAdditionalCameraData, PerCameraData> perCameraDatas = new Dictionary<UniversalAdditionalCameraData, PerCameraData>();
 
 		public override string ShaderName => "Hidden/PostProcessing/AutoExposureBlit";
 
@@ -111,36 +161,9 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 				&& SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.RFloat);
 		}
 
-		protected override void OnEnable()
-		{
-			base.OnEnable();
-			for(int eye = 0; eye < k_NumEyes; eye++)
-			{
-				m_AutoExposurePool[eye] = new RenderTexture[k_NumAutoExposureTextures];
-				m_AutoExposurePingPong[eye] = 0;
-			}
-			/*
-			intermediateDescriptor = new RenderTextureDescriptor(Screen.width, Screen.height, RenderTextureFormat.Default, 0)
-			{
-				enableRandomWrite = true
-			};
-			*/
-		}
-
-		void CheckTexture(int eye, int id)
-		{
-			if(m_AutoExposurePool[eye][id] == null || !m_AutoExposurePool[eye][id].IsCreated())
-			{
-				m_AutoExposurePool[eye][id] = new RenderTexture(1, 1, 0, RenderTextureFormat.RFloat) { enableRandomWrite = true };
-				m_AutoExposurePool[eye][id].Create();
-			}
-		}
-
 		public override void Setup(RenderingData renderingData, List<int> passes)
 		{
 			base.Setup(renderingData, passes);
-
-			//RenderingUtils.ReAllocateIfNeeded(ref intermediate, intermediateDescriptor, name: "AutoExpo_Intermediate");
 		}
 
 		public override void AddPasses(List<int> passes)
@@ -150,19 +173,25 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public override void Render(CustomPostProcessPass feature, RenderingData renderingData, CommandBuffer cmd, RTHandle source, RTHandle destination, int passIndex)
 		{
-			var urpCameraData = renderingData.cameraData.camera.GetUniversalAdditionalCameraData();
-			var logHistogram = GetLogHistogram(urpCameraData);
+			var urpAdditionalData = renderingData.cameraData.camera.GetUniversalAdditionalCameraData();
+			var perCameraData = GetPerCameraData(urpAdditionalData);
 
-			logHistogram.Generate(renderingData, cmd, source);
+			perCameraData.logHistogram.Generate(cmd, ref renderingData, source);
 
-			//return;
+			RenderTexture currentAutoExposure = PerformLookup(cmd, ref renderingData, perCameraData, urpAdditionalData.resetHistory);
+
+			blitMaterial.SetTexture("_AutoExposureTex", currentAutoExposure);
+			feature.Blit(cmd, source, destination, blitMaterial, 0);
+		}
+
+		private RenderTexture PerformLookup(CommandBuffer cmd, ref RenderingData renderingData, PerCameraData perCameraData, bool resetHistory)
+		{
 			cmd.BeginSample("AutoExposureLookup");
 
 			var computeShader = PostProcessResources.Instance.computeShaders.autoExposure;
 			int xrActiveEye = 0;
 			// Prepare autoExpo texture pool
-			CheckTexture(xrActiveEye, 0);
-			CheckTexture(xrActiveEye, 1);
+			perCameraData.CheckTextures(xrActiveEye);
 
 			// Make sure filtering values are correct to avoid apocalyptic consequences
 			float lowPercent = filtering.value.x;
@@ -178,8 +207,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			maxLuminance.value = Mathf.Max(minLum, maxLum);
 
 			// Compute average luminance & auto exposure
-			bool resetHistory = urpCameraData.resetHistory;
-			bool firstFrame = resetHistory || frameNumber == 0 || !Application.isPlaying;
+			bool firstFrame = resetHistory || perCameraData.frameNumber == 0 || !Application.isPlaying;
 
 			string adaptation;
 			if(firstFrame || eyeAdaptation.value == EyeAdaptation.Fixed)
@@ -188,68 +216,55 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 				adaptation = "KAutoExposureAvgLuminance_progressive";
 
 			int kernel = computeShader.FindKernel(adaptation);
-			cmd.SetComputeBufferParam(computeShader, kernel, "_HistogramBuffer", logHistogram.data);
+			cmd.SetComputeBufferParam(computeShader, kernel, "_HistogramBuffer", perCameraData.logHistogram.data);
 			cmd.SetComputeVectorParam(computeShader, "_Params1", new Vector4(lowPercent * 0.01f, highPercent * 0.01f, Exp2(minLuminance.value), Exp2(maxLuminance.value)));
 			cmd.SetComputeVectorParam(computeShader, "_Params2", new Vector4(speedDown.value, speedUp.value, keyValue.value, Time.deltaTime));
-			cmd.SetComputeVectorParam(computeShader, "_ScaleOffsetRes", logHistogram.GetHistogramScaleOffsetRes(renderingData));
+			cmd.SetComputeVectorParam(computeShader, "_ScaleOffsetRes", perCameraData.logHistogram.GetHistogramScaleOffsetRes(renderingData));
+
+			RenderTexture currentAutoExposure;
 
 			if(firstFrame)
 			{
 				// We don't want eye adaptation when not in play mode because the GameView isn't
 				// animated, thus making it harder to tweak. Just use the final auto exposure value.
-				m_CurrentAutoExposure = m_AutoExposurePool[xrActiveEye][0];
-				cmd.SetComputeTextureParam(computeShader, kernel, "_Destination", m_CurrentAutoExposure);
+				currentAutoExposure = perCameraData.autoExposurePool[xrActiveEye][0];
+				cmd.SetComputeTextureParam(computeShader, kernel, "_Destination", currentAutoExposure);
 				cmd.DispatchCompute(computeShader, kernel, 1, 1, 1);
 
 				// Copy current exposure to the other pingpong target to avoid adapting from black
 				//cmd.CopyTexture(m_AutoExposurePool[xrActiveEye][0], m_AutoExposurePool[xrActiveEye][1]);
-				cmd.CopyTexture(m_AutoExposurePool[xrActiveEye][0], m_AutoExposurePool[xrActiveEye][1]);
+				cmd.CopyTexture(perCameraData.autoExposurePool[xrActiveEye][0], perCameraData.autoExposurePool[xrActiveEye][1]);
 				//m_ResetHistory = false;
 			}
 			else
 			{
-				int pp = m_AutoExposurePingPong[xrActiveEye];
-				var src = m_AutoExposurePool[xrActiveEye][++pp % 2];
-				var dst = m_AutoExposurePool[xrActiveEye][++pp % 2];
+				int pp = perCameraData.autoExposurePingPong[xrActiveEye];
+				var src = perCameraData.autoExposurePool[xrActiveEye][++pp % 2];
+				var dst = perCameraData.autoExposurePool[xrActiveEye][++pp % 2];
 
 				cmd.SetComputeTextureParam(computeShader, kernel, "_Source", src);
 				cmd.SetComputeTextureParam(computeShader, kernel, "_Destination", dst);
 				cmd.DispatchCompute(computeShader, kernel, 1, 1, 1);
 
-				m_AutoExposurePingPong[xrActiveEye] = ++pp % 2;
-				m_CurrentAutoExposure = dst;
+				perCameraData.autoExposurePingPong[xrActiveEye] = ++pp % 2;
+				currentAutoExposure = dst;
 			}
 
-			//feature.Blit(cmd, intermediate, to);
 			cmd.EndSample("AutoExposureLookup");
 
-			blitMaterial.SetTexture("_AutoExposureTex", m_CurrentAutoExposure);
-			feature.Blit(cmd, source, destination, blitMaterial, 0);
+			perCameraData.UpdateCounter();
 
-			frameNumber++;
-			/*
-			context.autoExposureTexture = m_CurrentAutoExposure;
-			context.autoExposure = settings;
-			*/
+			return currentAutoExposure;
 		}
 
 		protected override void OnDisable()
 		{
 			base.OnDisable();
-			foreach(var rtEyeSet in m_AutoExposurePool)
+			foreach(var data in perCameraDatas.Values)
 			{
-				foreach(var rt in rtEyeSet)
-				{
-#if UNITY_EDITOR
-					if(Application.isPlaying)
-						Object.Destroy(rt);
-					else
-						Object.DestroyImmediate(rt);
-#else
-					Object.Destroy(rt);
-#endif
-				}
+				data.Release();
 			}
+			perCameraDatas.Clear();
 		}
 
 		private float Exp2(float x)
@@ -257,14 +272,14 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			return Mathf.Exp(x * 0.69314718055994530941723212145818f);
 		}
 
-		private LogHistogram GetLogHistogram(UniversalAdditionalCameraData cameraData)
+		private PerCameraData GetPerCameraData(UniversalAdditionalCameraData cameraData)
 		{
-			if(!logHistograms.TryGetValue(cameraData, out var histogram))
+			if(!perCameraDatas.TryGetValue(cameraData, out var data))
 			{
-				histogram = new LogHistogram();
-				logHistograms.Add(cameraData, histogram);
+				data = new PerCameraData();
+				perCameraDatas.Add(cameraData, data);
 			}
-			return histogram;
+			return data;
 		}
 	}
 }

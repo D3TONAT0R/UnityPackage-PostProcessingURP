@@ -10,7 +10,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
         public ComputeBuffer data { get; private set; }
 
-        public void Generate(RenderingData renderingData, CommandBuffer cmd, RTHandle source)
+        public void Generate(CommandBuffer cmd, ref RenderingData renderingData, RTHandle source)
         {
             if(data == null)
                 data = new ComputeBuffer(k_Bins, sizeof(uint));
