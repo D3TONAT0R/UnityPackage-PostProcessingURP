@@ -95,44 +95,37 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			}
 		}
 
-		public BoolParameter enabled = new BoolParameter(false, false);
-
 		/// <summary>
 		/// These values are the lower and upper percentages of the histogram that will be used to
 		/// find a stable average luminance. Values outside of this range will be discarded and wont
 		/// contribute to the average luminance.
 		/// </summary>
-		//[MinMax(1f, 99f), DisplayName("Filtering (%)"), Tooltip("Filters the bright and dark parts of the histogram when computing the average luminance. This is to avoid very dark pixels and very bright pixels from contributing to the auto exposure. Unit is in percent.")]
 		[Tooltip("Filters the bright and dark parts of the histogram when computing the average luminance. This is to avoid very dark pixels and very bright pixels from contributing to the auto exposure. Unit is in percent.")]
-		public Vector2Parameter filtering = new Vector2Parameter(new Vector2(50, 95));
+		public FloatRangeParameter filteringPercent = new FloatRangeParameter(new Vector2(50, 95), 0, 99);
 
 		/// <summary>
 		/// Minimum average luminance to consider for auto exposure (in EV).
 		/// </summary>
-		//[Range(LogHistogram.rangeMin, LogHistogram.rangeMax), DisplayName("Minimum (EV)"), Tooltip("Minimum average luminance to consider for auto exposure. Unit is EV.")]
 		[Tooltip("Minimum average luminance to consider for auto exposure. Unit is EV.")]
-		public ClampedFloatParameter minLuminance = new ClampedFloatParameter(0, -9, 9);
+		public MinMaxFloatParameter minimumEV = new MinMaxFloatParameter(0, LogHistogram.rangeMin, LogHistogram.rangeMax);
 
 		/// <summary>
 		/// Maximum average luminance to consider for auto exposure (in EV).
 		/// </summary>
-		//[Range(LogHistogram.rangeMin, LogHistogram.rangeMax), DisplayName("Maximum (EV)"), Tooltip("Maximum average luminance to consider for auto exposure. Unit is EV.")]
 		[Tooltip("Maximum average luminance to consider for auto exposure. Unit is EV.")]
-		public ClampedFloatParameter maxLuminance = new ClampedFloatParameter(0, -9, 9);
+		public MinMaxFloatParameter maximumEV = new MinMaxFloatParameter(0, -9, 9);
 
 		/// <summary>
 		/// Middle-grey value. Use this to compensate the global exposure of the scene.
 		/// </summary>
-		//[Min(0f), DisplayName("Exposure Compensation"), Tooltip("Use this to scale the global exposure of the scene.")]
 		[Min(0f), Tooltip("Use this to scale the global exposure of the scene.")]
-		public FloatParameter keyValue = new FloatParameter(1);
+		public FloatParameter exposureCompensation = new FloatParameter(1);
 
 		/// <summary>
 		/// The type of eye adaptation to use.
 		/// </summary>
-		//[DisplayName("Type"), Tooltip("Use \"Progressive\" if you want auto exposure to be animated. Use \"Fixed\" otherwise.")]
 		[Tooltip("Use \"Progressive\" if you want auto exposure to be animated. Use \"Fixed\" otherwise.")]
-		public EyeAdaptationParameter eyeAdaptation = new EyeAdaptationParameter { value = EyeAdaptation.Progressive };
+		public EyeAdaptationParameter type = new EyeAdaptationParameter { value = EyeAdaptation.Progressive };
 
 		/// <summary>
 		/// The adaptation speed from a dark to a light environment.
@@ -195,31 +188,31 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			perCameraData.CheckTextures(xrActiveEye);
 
 			// Make sure filtering values are correct to avoid apocalyptic consequences
-			float lowPercent = filtering.value.x;
-			float highPercent = filtering.value.y;
+			float lowPercent = filteringPercent.value.x;
+			float highPercent = filteringPercent.value.y;
 			const float kMinDelta = 1e-2f;
 			highPercent = Mathf.Clamp(highPercent, 1f + kMinDelta, 99f);
 			lowPercent = Mathf.Clamp(lowPercent, 1f, highPercent - kMinDelta);
 
 			// Clamp min/max adaptation values as well
-			float minLum = minLuminance.value;
-			float maxLum = maxLuminance.value;
-			minLuminance.value = Mathf.Min(minLum, maxLum);
-			maxLuminance.value = Mathf.Max(minLum, maxLum);
+			float minLum = minimumEV.value;
+			float maxLum = maximumEV.value;
+			minimumEV.value = Mathf.Min(minLum, maxLum);
+			maximumEV.value = Mathf.Max(minLum, maxLum);
 
 			// Compute average luminance & auto exposure
 			bool firstFrame = resetHistory || perCameraData.frameNumber == 0 || !Application.isPlaying || PostProcessResources.Instance.TryGetCustomResource<Texture2D>("mytexture", out _);
 
 			string adaptation;
-			if(firstFrame || eyeAdaptation.value == EyeAdaptation.Fixed)
+			if(firstFrame || type.value == EyeAdaptation.Fixed)
 				adaptation = "KAutoExposureAvgLuminance_fixed";
 			else
 				adaptation = "KAutoExposureAvgLuminance_progressive";
 
 			int kernel = computeShader.FindKernel(adaptation);
 			cmd.SetComputeBufferParam(computeShader, kernel, "_HistogramBuffer", perCameraData.logHistogram.data);
-			cmd.SetComputeVectorParam(computeShader, "_Params1", new Vector4(lowPercent * 0.01f, highPercent * 0.01f, Exp2(minLuminance.value), Exp2(maxLuminance.value)));
-			cmd.SetComputeVectorParam(computeShader, "_Params2", new Vector4(speedDown.value, speedUp.value, keyValue.value, Time.deltaTime));
+			cmd.SetComputeVectorParam(computeShader, "_Params1", new Vector4(lowPercent * 0.01f, highPercent * 0.01f, Exp2(minimumEV.value), Exp2(maximumEV.value)));
+			cmd.SetComputeVectorParam(computeShader, "_Params2", new Vector4(speedDown.value, speedUp.value, exposureCompensation.value, Time.deltaTime));
 			cmd.SetComputeVectorParam(computeShader, "_ScaleOffsetRes", perCameraData.logHistogram.GetHistogramScaleOffsetRes(renderingData));
 
 			RenderTexture currentAutoExposure;
