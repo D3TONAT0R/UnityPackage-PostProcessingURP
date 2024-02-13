@@ -1,6 +1,6 @@
 {
   "name": "com.github.d3tonat0r.postprocessingurp",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "displayName": "PostProcessing URP",
   "description": "A brief description of the package. This is the text that appears in the details view of the Package Manager window. This field supports UTF\u20138 character codes. This means that you can use special formatting character codes, such as line breaks (\n) and bullets (\u25aa).",
   "unity": "2022.3",
