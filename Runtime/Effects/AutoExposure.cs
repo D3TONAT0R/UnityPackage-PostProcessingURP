@@ -155,11 +155,6 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 				&& SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.RFloat);
 		}
 
-		public override void Setup(RenderingData renderingData, List<int> passes)
-		{
-			base.Setup(renderingData, passes);
-		}
-
 		public override void AddPasses(List<int> passes)
 		{
 			if(PostProcessResources.Instance.computeShaders.autoExposure) passes.Add(0);

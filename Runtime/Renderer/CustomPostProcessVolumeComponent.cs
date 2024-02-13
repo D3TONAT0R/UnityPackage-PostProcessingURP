@@ -44,9 +44,9 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public virtual bool IsTileCompatible() => true;
 
-		public virtual void Setup(RenderingData renderingData, List<int> passes)
+		public virtual void Setup(CustomPostProcessPass pass, RenderingData renderingData, List<int> passes)
 		{
-			SetupMaterial(renderingData);
+			SetupMaterial(pass, renderingData);
 			if(blitMaterial)
 			{
 				blitMaterial.SetFloat("_Blend", blend.value);
@@ -55,16 +55,22 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			AddPasses(passes);
 		}
 
-		protected virtual void SetupMaterial(RenderingData renderingData)
+		protected virtual void SetupMaterial(CustomPostProcessPass pass, RenderingData renderingData)
 		{
 			if(!blitMaterial && ShaderName != null)
 			{
 				var shader = Shader.Find(ShaderName);
 				if(!shader)
 				{
-					Debug.Log($"Failed to find custom post processing shader '{ShaderName}'");
+					Debug.LogError($"Failed to find custom post processing shader '{ShaderName}'");
 				}
-				if(!blitMaterial) blitMaterial = new Material(shader);
+				else
+				{
+					blitMaterial = new Material(shader);
+#if UNITY_EDITOR
+					pass.renderer.ReferenceShader(shader);
+#endif
+				}
 			}
 		}
 
@@ -74,5 +80,15 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		}
 
 		public abstract void ApplyProperties(Material material, RenderingData renderingData);
+
+		protected override void OnDisable()
+		{
+			base.OnDisable();
+			if(blitMaterial)
+			{
+				if(Application.isPlaying) Destroy(blitMaterial);
+				else DestroyImmediate(blitMaterial);
+			}
+		}
 	}
 }

@@ -81,13 +81,15 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public EffectOrdering effectOrdering = new EffectOrdering();
 
+		public List<Shader> shaderRefs = new List<Shader>();
+
 		public override void Create()
 		{
-			beforeSkyboxPass = new CustomPostProcessPass(RenderPassEvent.BeforeRenderingSkybox, effectOrdering.beforeSkybox);
-			beforeTransparentsPass = new CustomPostProcessPass(RenderPassEvent.BeforeRenderingTransparents, effectOrdering.beforeTransparents);
-			beforePostProcessPass = new CustomPostProcessPass(RenderPassEvent.BeforeRenderingPostProcessing, effectOrdering.beforePostProcess);
-			afterPostProcessPass = new CustomPostProcessPass(RenderPassEvent.AfterRenderingPostProcessing, effectOrdering.afterPostProcess);
-			afterRenderingPass = new CustomPostProcessPass(RenderPassEvent.AfterRendering, effectOrdering.afterRendering);
+			beforeSkyboxPass = new CustomPostProcessPass(this, RenderPassEvent.BeforeRenderingSkybox, effectOrdering.beforeSkybox);
+			beforeTransparentsPass = new CustomPostProcessPass(this, RenderPassEvent.BeforeRenderingTransparents, effectOrdering.beforeTransparents);
+			beforePostProcessPass = new CustomPostProcessPass(this, RenderPassEvent.BeforeRenderingPostProcessing, effectOrdering.beforePostProcess);
+			afterPostProcessPass = new CustomPostProcessPass(this, RenderPassEvent.AfterRenderingPostProcessing, effectOrdering.afterPostProcess);
+			afterRenderingPass = new CustomPostProcessPass(this, RenderPassEvent.AfterRendering, effectOrdering.afterRendering);
 		}
 
 		public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
@@ -97,6 +99,18 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			renderer.EnqueuePass(beforePostProcessPass);
 			renderer.EnqueuePass(afterPostProcessPass);
 			renderer.EnqueuePass(afterRenderingPass);
+		}
+
+		public void ReferenceShader(Shader shader)
+		{
+#if UNITY_EDITOR
+			if(shader == null) return;
+			if(!shaderRefs.Contains(shader))
+			{
+				shaderRefs.Add(shader);
+			}
+			UnityEditor.EditorUtility.SetDirty(this);
+#endif
 		}
 	}
 }

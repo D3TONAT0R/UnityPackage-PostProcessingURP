@@ -15,6 +15,8 @@ namespace UnityEditor.Rendering.Universal.PostProcess
 		private ReorderableList afterPostProcessOrdering;
 		private ReorderableList afterRenderingOrdering;
 
+		private SerializedProperty shaderRefsProp;
+
 		private string listTitle;
 		private SerializedProperty currentList;
 
@@ -22,11 +24,13 @@ namespace UnityEditor.Rendering.Universal.PostProcess
 		{
 			effectOrderingProp = serializedObject.FindProperty(nameof(CustomPostProcessRenderer.effectOrdering));
 
-			beforeSkyboxOrdering = CreateList("beforeSkybox");
-			beforeTransparentsOrdering = CreateList("beforeTransparents");
-			beforePostProcessOrdering = CreateList("beforePostProcess");
-			afterPostProcessOrdering = CreateList("afterPostProcess");
-			afterRenderingOrdering = CreateList("afterRendering");
+			beforeSkyboxOrdering = CreateList(nameof(CustomPostProcessRenderer.EffectOrdering.beforeSkybox));
+			beforeTransparentsOrdering = CreateList(nameof(CustomPostProcessRenderer.EffectOrdering.beforeTransparents));
+			beforePostProcessOrdering = CreateList(nameof(CustomPostProcessRenderer.EffectOrdering.beforePostProcess));
+			afterPostProcessOrdering = CreateList(nameof(CustomPostProcessRenderer.EffectOrdering.afterPostProcess));
+			afterRenderingOrdering = CreateList(nameof(CustomPostProcessRenderer.EffectOrdering.afterRendering));
+
+			shaderRefsProp = serializedObject.FindProperty(nameof(CustomPostProcessRenderer.shaderRefs));
 		}
 
 		public override void OnInspectorGUI()
@@ -34,6 +38,7 @@ namespace UnityEditor.Rendering.Universal.PostProcess
 			GUILayout.Space(10);
 			GUILayout.Label("Effect Ordering", EditorStyles.boldLabel);
 			GUILayout.Space(10);
+
 			listTitle = "Before Skybox";
 			currentList = beforeSkyboxOrdering.serializedProperty;
 			beforeSkyboxOrdering.DoLayoutList();
@@ -49,6 +54,41 @@ namespace UnityEditor.Rendering.Universal.PostProcess
 			listTitle = "After Rendering";
 			currentList = afterRenderingOrdering.serializedProperty;
 			afterRenderingOrdering.DoLayoutList();
+
+			GUILayout.Space(20);
+			shaderRefsProp.isExpanded = EditorGUILayout.Foldout(shaderRefsProp.isExpanded, "Referenced Shaders");
+			if(shaderRefsProp.isExpanded)
+			{
+				GUI.enabled = false;
+				EditorGUI.indentLevel++;
+				for(int i = 0; i < shaderRefsProp.arraySize; i++)
+				{
+					var arrayElement = shaderRefsProp.GetArrayElementAtIndex(i);
+					var shader = arrayElement.objectReferenceValue as Shader;
+					if(!shader)
+					{
+						shaderRefsProp.DeleteArrayElementAtIndex(i);
+						i--;
+						continue;
+					}
+					EditorGUILayout.PropertyField(arrayElement, GUIContent.none);
+				}
+				GUI.enabled = true;
+				EditorGUILayout.Space(5);
+				Rect rect = EditorGUILayout.GetControlRect();
+				rect.xMin = rect.xMax - 120;
+				if(GUI.Button(rect, "Clear List"))
+				{
+					if(EditorUtility.DisplayDialog("Clear Referenced Shaders", "Are you sure you want to clear all references shaders? " +
+						"The referenced shaders list will need to be regenerated to ensure that the required shaders are included in builds. \n" +
+						"Shaders are automatically added to the list when the effect is first rendered in the editor.",
+						"Clear List", "Cancel"))
+					{
+						shaderRefsProp.ClearArray();
+					}
+				}
+				EditorGUI.indentLevel--;
+			}
 		}
 
 		private ReorderableList CreateList(string propertyName)

@@ -15,7 +15,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public override bool IgnorePostProcessingFlag => false;
 
-		public override string ShaderName => "Shader Graphs/Outline";
+		public override string ShaderName => "Hidden/PostProcessing/Outline";
 
 		public override PostProcessingPassEvent PassEvent => PostProcessingPassEvent.AfterPostProcessing;
 

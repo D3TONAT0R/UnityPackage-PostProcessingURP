@@ -4,14 +4,14 @@ using UnityEngine.Rendering.Universal;
 
 namespace UnityEngine.Rendering.Universal.PostProcessing
 {
-	[VolumeComponentMenu("Post-processing/Grid")]
-	public class Grid3D : CustomPostProcessVolumeComponent
+	[VolumeComponentMenu("Post-processing/Texture Overlay")]
+	public class TextureOverlay : CustomPostProcessVolumeComponent
 	{
 		public FloatParameter gridScale = new FloatParameter(1f, false);
 		public Texture2DParameter gridTexture = new Texture2DParameter(null, false);
 		public FloatParameter range = new FloatParameter(10, false);
 
-		public override string ShaderName => "Shader Graphs/Grid3D";
+		public override string ShaderName => "Hidden/PostProcessing/TextureOverlay";
 
 		public override PostProcessingPassEvent PassEvent => PostProcessingPassEvent.BeforeTransparents;
 

@@ -17,8 +17,11 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		private readonly EffectOrderingList orderingListRef;
 
-		public CustomPostProcessPass(RenderPassEvent renderPassEvent, EffectOrderingList ordering)
+		public readonly CustomPostProcessRenderer renderer;
+
+		public CustomPostProcessPass(CustomPostProcessRenderer renderer, RenderPassEvent renderPassEvent, EffectOrderingList ordering)
 		{
+			this.renderer = renderer;
 			this.renderPassEvent = renderPassEvent;
 			orderingListRef = ordering;
 			destinationDescriptor = new RenderTextureDescriptor(Screen.width, Screen.height, RenderTextureFormat.Default, 0);
@@ -96,7 +99,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		private void RenderEffect(CustomPostProcessVolumeComponent effect, RenderingData renderingData, CommandBuffer cmd, ref RTHandle lastTarget)
 		{
 			passIndices.Clear();
-			effect.Setup(renderingData, passIndices);
+			effect.Setup(this, renderingData, passIndices);
 			int passCount = passIndices.Count;
 			if(passCount == 0) Debug.LogWarning($"Effect does not have any passes set: " + effect.GetType());
 			for(int j = 0; j < passCount; j++)
