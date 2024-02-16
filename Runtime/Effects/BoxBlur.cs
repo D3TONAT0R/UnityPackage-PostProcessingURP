@@ -5,7 +5,7 @@ using UnityEngine.Rendering.Universal;
 
 namespace UnityEngine.Rendering.Universal.PostProcessing
 {
-	[VolumeComponentMenu("Post-processing/Blur")]
+	[VolumeComponentMenu("Post-processing/Box Blur")]
 	public class BoxBlur : CustomPostProcessVolumeComponent
 	{
 		public PassEventParameter injectionPoint = new PassEventParameter(PostProcessingPassEvent.AfterPostProcessing, false);
