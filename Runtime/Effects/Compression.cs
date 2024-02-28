@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.Rendering.Universal;
 
 namespace UnityEngine.Rendering.Universal.PostProcessing
 {
@@ -8,6 +10,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		public IntParameter frequency = new ClampedIntParameter(8, 2, 16);
 		public IntParameter levels = new IntParameter(10);
 		public IntParameter blockSize = new ClampedIntParameter(8, 2, 32);
+		public FloatParameter compressionGamma = new ClampedFloatParameter(1f, 0.01f, 5f);
 
 		private RenderTextureDescriptor dctDescriptor;
 		private RTHandle dctHandle;
@@ -40,7 +43,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			base.Setup(pass, renderingData, passes);
 			dctDescriptor.width = renderingData.cameraData.cameraTargetDescriptor.width;
 			dctDescriptor.height = renderingData.cameraData.cameraTargetDescriptor.height;
-			dctDescriptor.colorFormat = renderingData.cameraData.cameraTargetDescriptor.colorFormat;
+			dctDescriptor.colorFormat = RenderTextureFormat.DefaultHDR;
 			RenderingUtils.ReAllocateIfNeeded(ref dctHandle, dctDescriptor, name: "Temp_DCT");
 			RenderingUtils.ReAllocateIfNeeded(ref quantizationHandle, dctDescriptor, name: "Temp_Quantization");
 		}
@@ -50,14 +53,12 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			material.SetFloat("_Frequency", frequency.value);
 			material.SetFloat("_Levels", levels.value);
 			material.SetInt("_BlockSize", blockSize.value);
+			material.SetFloat("_DCTGamma", compressionGamma.value);
 		}
 
 		public override void Render(CustomPostProcessPass feature, RenderingData renderingData, CommandBuffer cmd, RTHandle from, RTHandle to, int passIndex)
 		{
-			//Compute discrite cosine transform
 			feature.Blit(cmd, from, dctHandle, blitMaterial, 0);
-
-			//Decompress the result stored in _DCTTexture
 			cmd.SetGlobalTexture("_DCTTexture", dctHandle);
 			feature.Blit(cmd, from, to, blitMaterial, 1);
 		}
