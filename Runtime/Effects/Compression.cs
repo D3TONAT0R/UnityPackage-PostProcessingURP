@@ -1,6 +1,4 @@
 using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.Rendering.Universal;
 
 namespace UnityEngine.Rendering.Universal.PostProcessing
 {
@@ -21,7 +19,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public override void AddPasses(List<int> passes)
 		{
-			passes.Add(2);
+			passes.Add(1);
 		}
 
 		protected override void OnEnable()
@@ -56,11 +54,12 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public override void Render(CustomPostProcessPass feature, RenderingData renderingData, CommandBuffer cmd, RTHandle from, RTHandle to, int passIndex)
 		{
+			//Compute discrite cosine transform
 			feature.Blit(cmd, from, dctHandle, blitMaterial, 0);
+
+			//Decompress the result stored in _DCTTexture
 			cmd.SetGlobalTexture("_DCTTexture", dctHandle);
-			feature.Blit(cmd, from, quantizationHandle, blitMaterial, 1);
-			cmd.SetGlobalTexture("_QuantizationTexture", quantizationHandle);
-			feature.Blit(cmd, from, to, blitMaterial, 2);
+			feature.Blit(cmd, from, to, blitMaterial, 1);
 		}
 	}
 }
