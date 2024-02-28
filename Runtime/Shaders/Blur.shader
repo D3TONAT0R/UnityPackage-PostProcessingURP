@@ -1,15 +1,16 @@
-﻿Shader "Hidden/Legacy/Blur"
+﻿Shader "Hidden/PostProcessing/Blur"
 {
 	HLSLINCLUDE
 
-	#include "Packages/com.unity.postprocessing/PostProcessing/Shaders/StdLib.hlsl"
+	#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+	// The Blit.hlsl file provides the vertex shader (Vert),
+	// the input structure (Attributes), and the output structure (Varyings)
+	#include "Packages/com.unity.render-pipelines.core/Runtime/Utilities/Blit.hlsl"
 
-	TEXTURE2D_SAMPLER2D(_MainTex, sampler_MainTex);
-	TEXTURE2D_SAMPLER2D(_BlurTex, sampler_BlurTex);
+	float _Blend;
 
 	uniform half4 _Parameter;
-	uniform half4 _MainTex_TexelSize;
-	half4 _MainTex_ST;
+	uniform half4 _BlitTexture_TexelSize;
 
 	// Weight Curves..
 	static const half curve[7] = { 0.0205, 0.0855, 0.232, 0.324, 0.232, 0.0855, 0.0205 };
@@ -44,11 +45,14 @@
 		half2 uv      :TEXCOORD0;
 	};
 
-	VaryingsDownsample VertDownsample(AttributesDefault v)
+	VaryingsDownsample VertDownsample(Attributes v)
 	{
-		VaryingsDownsample o;
+		Varyings o1 = Vert(v);
 
-		half2 texcoord = TransformTriangleVertexToUV(v.vertex.xy);
+		VaryingsDownsample o;
+		o.vertex = o1.positionCS;
+
+		half2 texcoord = TransformTriangleVertexToUV(o.vertex.xy);
 
 		#if UNITY_UV_STARTS_AT_TOP
 			texcoord = texcoord * float2(1.0, -1.0) + float2(0.0, 1.0);
@@ -188,6 +192,7 @@
 
 		Pass // 0
 		{
+			Name "Downsample"
 			HLSLPROGRAM
 
 			#pragma vertex VertDownsample
@@ -198,6 +203,7 @@
 		
 		Pass // 1
 		{
+			Name "BlurVertical"
 			HLSLPROGRAM
 
 			#pragma vertex VertBlurVertical
@@ -208,6 +214,7 @@
 
 		Pass // 2
 		{
+			Name "BlurHorizontal"
 			HLSLPROGRAM
 
 			#pragma vertex VertBlurHorizontal
@@ -218,6 +225,7 @@
 
 		Pass // 3
 		{
+			Name "BlurVerticalSGX"
 			HLSLPROGRAM
 
 			#pragma vertex VertBlurVerticalSGX
@@ -228,6 +236,7 @@
 
 		Pass // 4
 		{
+			Name "BlurHorizontalSGX"
 			HLSLPROGRAM
 
 			#pragma vertex VertBlurHorizontalSGX
