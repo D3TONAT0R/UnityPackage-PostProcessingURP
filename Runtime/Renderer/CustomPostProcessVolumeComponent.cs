@@ -38,6 +38,8 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public abstract PostProcessingPassEvent PassEvent { get; }
 
+		public virtual bool EnabledInSceneView => true;
+
 		protected Material blitMaterial;
 
 		public virtual bool IsActive() => blend.value > 0;

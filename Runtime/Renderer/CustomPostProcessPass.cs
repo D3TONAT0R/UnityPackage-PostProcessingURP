@@ -49,6 +49,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			foreach(var customEffect in EnumerateCustomEffects(stack))
 			{
 				bool shouldRender = customEffect.IsActive() && (renderingData.postProcessingEnabled || customEffect.IgnorePostProcessingFlag);
+				if(renderingData.cameraData.cameraType == CameraType.SceneView && !customEffect.EnabledInSceneView) shouldRender = false;
 				// Only process if the effect is active & enabled
 				if(shouldRender)
 				{
