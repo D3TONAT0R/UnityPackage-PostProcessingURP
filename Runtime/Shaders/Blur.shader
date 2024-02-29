@@ -8,9 +8,10 @@
 	#include "Packages/com.unity.render-pipelines.core/Runtime/Utilities/Blit.hlsl"
 
 	float _Blend;
-	//TEXTURE2D(_BlitTexture);
 	float4 _BlitTexture_TexelSize;
 	//float4 _BlitTexture_ST;
+
+	TEXTURE2D(_SourceTexture);
 
 	#define _BlitTexture_ST float4(1.0, 1.0, 0.0, 0.0)
 
@@ -102,9 +103,11 @@
 		VaryingsBlurCoords8 o;
 		#include "CGIncludes/BlurVertBlock.cginc"
 
+		/*
 		#if UNITY_UV_STARTS_AT_TOP
-			o.texcoord = o.texcoord * float2(1.0, -1.0) + float2(0.0, 1.0);
+		o.texcoord = o.texcoord * float2(1.0, -1.0) + float2(0.0, 1.0);
 		#endif
+		*/
 
 		o.offs = _BlitTexture_TexelSize.xy * half2(1.0, 0.0) * _Parameter.x;
 
@@ -116,9 +119,11 @@
 		VaryingsBlurCoords8 o;
 		#include "CGIncludes/BlurVertBlock.cginc"
 
+		/*
 		#if UNITY_UV_STARTS_AT_TOP
 		o.texcoord = o.texcoord * float2(1.0, -1.0) + float2(0.0, 1.0);
 		#endif
+		*/
 
 		o.offs = _BlitTexture_TexelSize.xy * half2(0.0, 1.0) * _Parameter.x;
 
@@ -147,9 +152,11 @@
 		VaryingsBlurCoordsSGX o;
 		#include "CGIncludes/BlurVertBlock.cginc"
 
-#if UNITY_UV_STARTS_AT_TOP
+		/*
+		#if UNITY_UV_STARTS_AT_TOP
 		o.texcoord = o.texcoord * float2(1.0, -1.0) + float2(0.0, 1.0);
-#endif
+		#endif
+		*/
 
 		half offsetMagnitude = _BlitTexture_TexelSize.x * _Parameter.x;
 		o.offs[0] = UnityStereoScreenSpaceUVAdjust(o.texcoord.xyxy + offsetMagnitude * half4(-3.0h, 0.0h, 3.0h, 0.0h), _BlitTexture_ST);
@@ -164,9 +171,11 @@
 		VaryingsBlurCoordsSGX o;
 		#include "CGIncludes/BlurVertBlock.cginc"
 
+		/*
 		#if UNITY_UV_STARTS_AT_TOP
 		o.texcoord = o.texcoord * float2(1.0, -1.0) + float2(0.0, 1.0);
 		#endif
+		*/
 
 		half offsetMagnitude = _BlitTexture_TexelSize.y * _Parameter.x;
 		o.offs[0] = UnityStereoScreenSpaceUVAdjust(o.texcoord.xyxy + offsetMagnitude * half4(0.0h, -3.0h, 0.0h, 3.0h), _BlitTexture_ST);
@@ -189,14 +198,14 @@
 			half4 tapB = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, i.offs[l].zw);
 			color += (tapA + tapB) * curve4[l];
 		}
-
-		return lerp(unmod, color, _Blend);
-		//return color;
+		return color;
 	}
 
 	float4 FragFinal(Varyings i) : SV_Target
 	{
-		return SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, i.texcoord);
+		float4 original = SAMPLE_TEXTURE2D(_SourceTexture, sampler_LinearClamp, i.texcoord);
+		float4 blurred = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, i.texcoord);
+		return lerp(original, blurred, _Blend);
 	}
 
 	ENDHLSL

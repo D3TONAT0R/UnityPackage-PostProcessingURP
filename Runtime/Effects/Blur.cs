@@ -40,7 +40,8 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		public FloatParameter blurSize = new FloatParameter(3f);
 
 		private RenderTextureDescriptor tempDescriptor;
-		private RTHandle tempRT;
+		private RTHandle tempRT_A;
+		private RTHandle tempRT_B;
 
 		public override string ShaderName => "Hidden/PostProcessing/Blur";
 
@@ -59,7 +60,8 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			int ds = downsample.value;
 			tempDescriptor.width = targetDescriptor.width >> ds;
 			tempDescriptor.height = targetDescriptor.height >> ds;
-			RenderingUtils.ReAllocateIfNeeded(ref tempRT, tempDescriptor, name: "Temp_Downsample");
+			RenderingUtils.ReAllocateIfNeeded(ref tempRT_A, tempDescriptor, name: "Temp_Downsample_A");
+			RenderingUtils.ReAllocateIfNeeded(ref tempRT_B, tempDescriptor, name: "Temp_Downsample_B");
 			base.Setup(pass, renderingData, passes);
 		}
 
@@ -85,10 +87,9 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			//int blurId = Shader.PropertyToID("_BlurPostProcessEffect");
 			//cmd.GetTemporaryRT(blurId, rtW, rtH, 0, FilterMode.Bilinear);
 
-			feature.Blit(cmd, source, tempRT, blitMaterial, (int)Pass.Downsample);
+			cmd.SetGlobalTexture("_SourceTexture", source);
 
-			RTHandle rtA = tempRT;
-			RTHandle rtB = destination;
+			feature.Blit(cmd, source, tempRT_A, blitMaterial, (int)Pass.Downsample);
 
 			int horizontalPass = (int)(mode.value == Mode.SgxGaussian ? Pass.BlurHorizontalSGX : Pass.BlurHorizontal);
 			int verticalPass = (int)(mode.value == Mode.SgxGaussian ? Pass.BlurVerticalSGX : Pass.BlurVertical);
@@ -101,20 +102,20 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 				// Vertical blur..
 				//int rtId2 = Shader.PropertyToID("_BlurPostProcessEffect" + rtIndex++);
 				//cmd.GetTemporaryRT(rtId2, rtW, rtH, 0, FilterMode.Bilinear);
-				feature.Blit(cmd, rtA, rtB, blitMaterial, horizontalPass);
+				feature.Blit(cmd, tempRT_A, tempRT_B, blitMaterial, horizontalPass);
 				//cmd.ReleaseTemporaryRT(blurId);
 				//blurId = rtId2;
 
 				// Horizontal blur..
 				//rtId2 = Shader.PropertyToID("_BlurPostProcessEffect" + rtIndex++);
 				//cmd.GetTemporaryRT(rtId2, rtW, rtH, 0, FilterMode.Bilinear);
-				feature.Blit(cmd, rtB, rtA, blitMaterial, verticalPass);
+				feature.Blit(cmd, tempRT_B, tempRT_A, blitMaterial, verticalPass);
 				//cmd.BlitFullscreenTriangle(blurId, rtId2, sheet, (int)Pass.BlurHorizontal + pass);
 				//cmd.ReleaseTemporaryRT(blurId);
 				//blurId = rtId2;
 			}
 
-			feature.Blit(cmd, rtA, destination, blitMaterial, (int)Pass.FinalBlit);
+			feature.Blit(cmd, tempRT_A, destination, blitMaterial, (int)Pass.FinalBlit);
 			//cmd.Blit(blurId, context.destination);
 			//cmd.ReleaseTemporaryRT(blurId);
 
@@ -126,7 +127,8 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		protected override void OnDestroy()
 		{
 			base.OnDestroy();
-			if(tempRT != null) tempRT.Release();
+			if(tempRT_A != null) tempRT_A.Release();
+			if(tempRT_B != null) tempRT_B.Release();
 		}
 	}
 }
