@@ -38,7 +38,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public abstract PostProcessingPassEvent PassEvent { get; }
 
-		public virtual bool EnabledInSceneView => true;
+		public virtual bool VisibleInSceneView => true;
 
 		protected Material blitMaterial;
 

@@ -1,4 +1,4 @@
-﻿Shader "Hidden/PostProcessing/Blur"
+﻿Shader "Hidden/PostProcessing/GaussianBlur"
 {
 	HLSLINCLUDE
 
@@ -18,9 +18,14 @@
 	uniform half4 _Parameter;
 	//uniform half4 _BlitTexture_TexelSize;
 
+	#define C0 0.324
+	#define C1 0.232
+	#define C2 0.0855
+	#define C3 0.0205
+
 	// Weight Curves..
-	static const half curve[7] = { 0.0205, 0.0855, 0.232, 0.324, 0.232, 0.0855, 0.0205 };
-	static const half4 curve4[7] = { half4(0.0205,0.0205,0.0205,0), half4(0.0855,0.0855,0.0855,0), half4(0.232,0.232,0.232,0), half4(0.324,0.324,0.324,1), half4(0.232,0.232,0.232,0), half4(0.0855,0.0855,0.0855,0), half4(0.0205,0.0205,0.0205,0) };
+	static const float curve[7] = { C3, C2, C1, C0, C1, C2, C3 };
+	static const float4 curve4[7] = { float4(C3,C3,C3,0), float4(C2,C2,C2,0), float4(C1,C1,C1,0), float4(C0,C0,C0,1), float4(C1,C1,C1,0), float4(C2,C2,C2,0), float4(C3,C3,C3,0) };
 
 	struct VaryingsDownsample
 	{
@@ -72,12 +77,6 @@
 		VaryingsDownsample o;
 		#include "CGIncludes/BlurVertBlock.cginc"
 
-		/*
-#if UNITY_UV_STARTS_AT_TOP
-		o.texcoord = o.texcoord * float2(1.0, -1.0) + float2(0.0, 1.0);
-#endif
-*/
-
 		o.positionCS = float4(o.positionCS.xy, 0.0, 1.0); //<-----
 		//o.uv20 = UnityStereoScreenSpaceUVAdjust(o.texcoord + _BlitTexture_TexelSize.xy * half2(0.5h, 0.5h), _BlitTexture_ST);
 		o.uv20 = UnityStereoScreenSpaceUVAdjust(o.texcoord + _BlitTexture_TexelSize.xy, _BlitTexture_ST);
@@ -103,12 +102,6 @@
 		VaryingsBlurCoords8 o;
 		#include "CGIncludes/BlurVertBlock.cginc"
 
-		/*
-		#if UNITY_UV_STARTS_AT_TOP
-		o.texcoord = o.texcoord * float2(1.0, -1.0) + float2(0.0, 1.0);
-		#endif
-		*/
-
 		o.offs = _BlitTexture_TexelSize.xy * half2(1.0, 0.0) * _Parameter.x;
 
 		return o;
@@ -118,12 +111,6 @@
 	{
 		VaryingsBlurCoords8 o;
 		#include "CGIncludes/BlurVertBlock.cginc"
-
-		/*
-		#if UNITY_UV_STARTS_AT_TOP
-		o.texcoord = o.texcoord * float2(1.0, -1.0) + float2(0.0, 1.0);
-		#endif
-		*/
 
 		o.offs = _BlitTexture_TexelSize.xy * half2(0.0, 1.0) * _Parameter.x;
 
@@ -152,12 +139,6 @@
 		VaryingsBlurCoordsSGX o;
 		#include "CGIncludes/BlurVertBlock.cginc"
 
-		/*
-		#if UNITY_UV_STARTS_AT_TOP
-		o.texcoord = o.texcoord * float2(1.0, -1.0) + float2(0.0, 1.0);
-		#endif
-		*/
-
 		half offsetMagnitude = _BlitTexture_TexelSize.x * _Parameter.x;
 		o.offs[0] = UnityStereoScreenSpaceUVAdjust(o.texcoord.xyxy + offsetMagnitude * half4(-3.0h, 0.0h, 3.0h, 0.0h), _BlitTexture_ST);
 		o.offs[1] = UnityStereoScreenSpaceUVAdjust(o.texcoord.xyxy + offsetMagnitude * half4(-2.0h, 0.0h, 2.0h, 0.0h), _BlitTexture_ST);
@@ -171,12 +152,6 @@
 		VaryingsBlurCoordsSGX o;
 		#include "CGIncludes/BlurVertBlock.cginc"
 
-		/*
-		#if UNITY_UV_STARTS_AT_TOP
-		o.texcoord = o.texcoord * float2(1.0, -1.0) + float2(0.0, 1.0);
-		#endif
-		*/
-
 		half offsetMagnitude = _BlitTexture_TexelSize.y * _Parameter.x;
 		o.offs[0] = UnityStereoScreenSpaceUVAdjust(o.texcoord.xyxy + offsetMagnitude * half4(0.0h, -3.0h, 0.0h, 3.0h), _BlitTexture_ST);
 		o.offs[1] = UnityStereoScreenSpaceUVAdjust(o.texcoord.xyxy + offsetMagnitude * half4(0.0h, -2.0h, 0.0h, 2.0h), _BlitTexture_ST);
@@ -189,8 +164,7 @@
 	{
 		half2 uv = i.texcoord.xy;
 
-		half4 unmod = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, i.texcoord);
-		half4 color = unmod * curve4[3];
+		half4 color = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, i.texcoord) * curve4[3];
 
 		for(int l=0; l<3; l++)
 		{
