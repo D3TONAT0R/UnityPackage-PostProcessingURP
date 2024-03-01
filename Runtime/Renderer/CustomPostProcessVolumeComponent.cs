@@ -14,7 +14,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 	[System.Serializable]
 	public class PassEventParameter : VolumeParameter<PostProcessingPassEvent>
 	{
-		public PassEventParameter(PostProcessingPassEvent value, bool overrideState) : base(value, overrideState)
+		public PassEventParameter(PostProcessingPassEvent value, bool overrideState = false) : base(value, overrideState)
 		{
 
 		}

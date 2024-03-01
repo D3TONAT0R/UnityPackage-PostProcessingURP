@@ -9,7 +9,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 	{
 		public IntParameter verticalResolution = new IntParameter(1080, false);
 
-		public override string ShaderName => "PostProcessing/Pixelate";
+		public override string ShaderName => "Hidden/PostProcessing/Pixelate";
 
 		public override PostProcessingPassEvent PassEvent => PostProcessingPassEvent.AfterPostProcessing;
 
