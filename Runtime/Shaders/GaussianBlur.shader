@@ -75,7 +75,7 @@
 	VaryingsDownsample VertDownsample(Attributes v)
 	{
 		VaryingsDownsample o;
-		#include "CGIncludes/BlurVertBlock.cginc"
+		#include "CGIncludes/DefaultVertBlock.cginc"
 
 		o.positionCS = float4(o.positionCS.xy, 0.0, 1.0); //<-----
 		//o.uv20 = UnityStereoScreenSpaceUVAdjust(o.texcoord + _BlitTexture_TexelSize.xy * half2(0.5h, 0.5h), _BlitTexture_ST);
@@ -100,7 +100,7 @@
 	VaryingsBlurCoords8 VertBlurHorizontal(Attributes v)
 	{
 		VaryingsBlurCoords8 o;
-		#include "CGIncludes/BlurVertBlock.cginc"
+		#include "CGIncludes/DefaultVertBlock.cginc"
 
 		o.offs = _BlitTexture_TexelSize.xy * half2(1.0, 0.0) * _Parameter.x;
 
@@ -110,7 +110,7 @@
 	VaryingsBlurCoords8 VertBlurVertical(Attributes v)
 	{
 		VaryingsBlurCoords8 o;
-		#include "CGIncludes/BlurVertBlock.cginc"
+		#include "CGIncludes/DefaultVertBlock.cginc"
 
 		o.offs = _BlitTexture_TexelSize.xy * half2(0.0, 1.0) * _Parameter.x;
 
@@ -137,7 +137,7 @@
 	VaryingsBlurCoordsSGX VertBlurHorizontalSGX(Attributes v)
 	{
 		VaryingsBlurCoordsSGX o;
-		#include "CGIncludes/BlurVertBlock.cginc"
+		#include "CGIncludes/DefaultVertBlock.cginc"
 
 		half offsetMagnitude = _BlitTexture_TexelSize.x * _Parameter.x;
 		o.offs[0] = UnityStereoScreenSpaceUVAdjust(o.texcoord.xyxy + offsetMagnitude * half4(-3.0h, 0.0h, 3.0h, 0.0h), _BlitTexture_ST);
@@ -150,7 +150,7 @@
 	VaryingsBlurCoordsSGX VertBlurVerticalSGX(Attributes v)
 	{
 		VaryingsBlurCoordsSGX o;
-		#include "CGIncludes/BlurVertBlock.cginc"
+		#include "CGIncludes/DefaultVertBlock.cginc"
 
 		half offsetMagnitude = _BlitTexture_TexelSize.y * _Parameter.x;
 		o.offs[0] = UnityStereoScreenSpaceUVAdjust(o.texcoord.xyxy + offsetMagnitude * half4(0.0h, -3.0h, 0.0h, 3.0h), _BlitTexture_ST);
