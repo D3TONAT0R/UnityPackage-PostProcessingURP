@@ -29,6 +29,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		public override void ApplyProperties(Material material, RenderingData renderingData)
 		{
 			material.SetFloat("_Blend", -blend.value);
+			material.SetFloat("_Intensity", blend.value);
 			material.SetFloat("_HorizontalBlur", horizontalBleed.value);
 			material.SetFloat("_VerticalBlur", verticalBleed.value);
 		}
