@@ -15,7 +15,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public override PostProcessingPassEvent PassEvent => PostProcessingPassEvent.BeforeTransparents;
 
-		public override void ApplyProperties(Material material, RenderingData renderingData)
+		public override void ApplyProperties(Material material, CustomPostProcessRenderContext context)
 		{
 			material.SetFloat("_GridScale", gridScale.value);
 			material.SetTexture("_GridTex", gridTexture.value);

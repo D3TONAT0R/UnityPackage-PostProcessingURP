@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using UnityEngine.Rendering.RenderGraphModule;
 
 namespace UnityEngine.Rendering.Universal.PostProcessing
 {
@@ -52,7 +53,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			tempDescriptor = new RenderTextureDescriptor(Screen.width, Screen.height, RenderTextureFormat.ARGB32, 0, 0);
 		}
 
-		public override void Setup(CustomPostProcessPass pass, RenderingData renderingData, List<int> passes)
+		public override void Setup(CustomPostProcessPass feature, RenderGraph graph, TextureHandle from, TextureHandle to, int passIndex)
 		{
 			var targetDescriptor = renderingData.cameraData.cameraTargetDescriptor;
 			tempDescriptor.colorFormat = targetDescriptor.colorFormat;
@@ -61,17 +62,17 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			tempDescriptor.height = targetDescriptor.height >> ds;
 			RenderingUtils.ReAllocateIfNeeded(ref tempRT_A, tempDescriptor, name: "Temp_Downsample_A");
 			RenderingUtils.ReAllocateIfNeeded(ref tempRT_B, tempDescriptor, name: "Temp_Downsample_B");
-			base.Setup(pass, renderingData, passes);
+			base.Setup(feature, graph, from, to, passIndex);
 		}
 
-		public override void ApplyProperties(Material material, RenderingData renderingData)
+		public override void ApplyProperties(Material material, CustomPostProcessRenderContext context)
 		{
 
 		}
 
-		public override void Render(CustomPostProcessPass feature, RenderingData renderingData, CommandBuffer cmd, RTHandle source, RTHandle destination, int passIndex)
+		public override void Render(CustomPostProcessRenderContext context, TextureHandle from, TextureHandle to, int passIndex)
 		{
-			cmd.BeginSample("BlurPostEffect");
+			inClassName.Cmd.BeginSample("BlurPostEffect");
 
 			int ds = downsample.value;
 
@@ -81,9 +82,9 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			int iterations = blurIterations.value;
 			float size = blurSize.value;
 
-			cmd.SetGlobalTexture("_SourceTexture", source);
+			inClassName.Cmd.SetGlobalTexture("_SourceTexture", inClassName.From);
 
-			feature.Blit(cmd, source, tempRT_A, blitMaterial, (int)Pass.Downsample);
+			inClassName.Feature.Blit(inClassName.Cmd, inClassName.From, tempRT_A, blitMaterial, (int)Pass.Downsample);
 
 			int horizontalPass = (int)(mode.value == Mode.SgxGaussian ? Pass.BlurHorizontalSGX : Pass.BlurHorizontal);
 			int verticalPass = (int)(mode.value == Mode.SgxGaussian ? Pass.BlurVerticalSGX : Pass.BlurVertical);
@@ -92,20 +93,20 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			{
 				float iterationOffs = i * 1.0f;
 				var parameters = new Vector4(size * widthMod + iterationOffs, -size * widthMod - iterationOffs, _blend, 0.0f);
-				cmd.SetGlobalVector("_Parameter", parameters);
+				inClassName.Cmd.SetGlobalVector("_Parameter", parameters);
 
 				// Vertical blur
-				feature.Blit(cmd, tempRT_A, tempRT_B, blitMaterial, verticalPass);
+				inClassName.Feature.Blit(inClassName.Cmd, tempRT_A, tempRT_B, blitMaterial, verticalPass);
 
 				// Horizontal blur
-				feature.Blit(cmd, tempRT_B, tempRT_A, blitMaterial, horizontalPass);
+				inClassName.Feature.Blit(inClassName.Cmd, tempRT_B, tempRT_A, blitMaterial, horizontalPass);
 			}
 
-			feature.Blit(cmd, tempRT_A, destination, blitMaterial, (int)Pass.FinalBlit);
+			inClassName.Feature.Blit(inClassName.Cmd, tempRT_A, inClassName.To, blitMaterial, (int)Pass.FinalBlit);
 
-			cmd.SetGlobalVector("_Parameter", Vector4.zero);
+			inClassName.Cmd.SetGlobalVector("_Parameter", Vector4.zero);
 
-			cmd.EndSample("BlurPostEffect");
+			inClassName.Cmd.EndSample("BlurPostEffect");
 		}
 
 		protected override void OnDestroy()

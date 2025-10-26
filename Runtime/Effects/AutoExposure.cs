@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine.Rendering.RenderGraphModule;
+using UnityEngine.Rendering.RenderGraphModule.Util;
 
 namespace UnityEngine.Rendering.Universal.PostProcessing
 {
@@ -139,13 +141,13 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		[Min(0f), Tooltip("Adaptation speed from a light to a dark environment.")]
 		public FloatParameter speedDown = new FloatParameter(1);
 
-		private readonly Dictionary<UniversalAdditionalCameraData, PerCameraData> perCameraDatas = new Dictionary<UniversalAdditionalCameraData, PerCameraData>();
+		private readonly Dictionary<UniversalCameraData, PerCameraData> perCameraDatas = new Dictionary<UniversalCameraData, PerCameraData>();
 
 		public override string ShaderName => "Hidden/PostProcessing/AutoExposureBlit";
 
 		public override PostProcessingPassEvent PassEvent => PostProcessingPassEvent.BeforePostProcessing;
 
-		public override void ApplyProperties(Material material, RenderingData renderingData) { }
+		public override void ApplyProperties(Material material, CustomPostProcessRenderContext context) { }
 
 		public override bool IsActive()
 		{
@@ -160,17 +162,19 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			if(PostProcessResources.Instance.computeShaders.autoExposure) passes.Add(0);
 		}
 
-		public override void Render(CustomPostProcessPass feature, RenderingData renderingData, CommandBuffer cmd, RTHandle source, RTHandle destination, int passIndex)
+		public override void Render(CustomPostProcessRenderContext context, TextureHandle from, TextureHandle to, int passIndex)
 		{
-			var urpAdditionalData = renderingData.cameraData.camera.GetUniversalAdditionalCameraData();
-			var perCameraData = GetPerCameraData(urpAdditionalData);
 
-			perCameraData.logHistogram.Generate(cmd, ref renderingData, source);
+			var perCameraData = GetPerCameraData(context.cameraData);
 
-			RenderTexture currentAutoExposure = PerformLookup(cmd, ref renderingData, perCameraData, urpAdditionalData.resetHistory);
+			perCameraData.logHistogram.Generate(context.renderGraph, from);
+
+			//TODO: get resetHistory
+			RenderTexture currentAutoExposure = PerformLookup(context, perCameraData, false);
 
 			blitMaterial.SetTexture("_AutoExposureTex", currentAutoExposure);
-			feature.Blit(cmd, source, destination, blitMaterial, 0);
+			var blitParams = new RenderGraphUtils.BlitMaterialParameters(from, to, blitMaterial, 0);
+			context.renderGraph.AddBlitPass(blitParams, "Auto Exposure Blit");
 		}
 
 		private RenderTexture PerformLookup(CommandBuffer cmd, ref RenderingData renderingData, PerCameraData perCameraData, bool resetHistory)
@@ -261,7 +265,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			return Mathf.Exp(x * 0.69314718055994530941723212145818f);
 		}
 
-		private PerCameraData GetPerCameraData(UniversalAdditionalCameraData cameraData)
+		private PerCameraData GetPerCameraData(UniversalCameraData cameraData)
 		{
 			if(!perCameraDatas.TryGetValue(cameraData, out var data))
 			{

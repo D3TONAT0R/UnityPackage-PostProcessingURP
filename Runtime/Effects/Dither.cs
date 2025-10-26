@@ -27,7 +27,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		}
 		private static Texture2D defaultDitherTexture;
 
-		public override void ApplyProperties(Material material, RenderingData renderingData)
+		public override void ApplyProperties(Material material, CustomPostProcessRenderContext context)
 		{
 			var texture = ditherTexture.value;
 			if(!texture) texture = DefaultDitherTexture;

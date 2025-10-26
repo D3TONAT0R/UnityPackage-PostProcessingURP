@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Rendering.RenderGraphModule;
 using UnityEngine.Rendering.Universal;
 
 namespace UnityEngine.Rendering.Universal.PostProcessing
@@ -36,7 +37,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			edgeDetectionDescriptor = new RenderTextureDescriptor(Screen.width, Screen.height, RenderTextureFormat.ARGB32, 0, 0);
 		}
 
-		public override void Setup(CustomPostProcessPass pass, RenderingData renderingData, List<int> passes)
+		public override void Setup(CustomPostProcessRenderContext context, List<int> passes)
 		{
 			base.Setup(pass, renderingData, passes);
 			var targetDescriptor = renderingData.cameraData.cameraTargetDescriptor;
@@ -45,7 +46,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			RenderingUtils.ReAllocateIfNeeded(ref edgeDetectionTarget, edgeDetectionDescriptor, name: "Temp_EdgeDetection");
 		}
 
-		public override void ApplyProperties(Material material, RenderingData renderingData)
+		public override void ApplyProperties(Material material, CustomPostProcessRenderContext context)
 		{
 			material.SetFloat("_Range", range.value);
 			material.SetFloat("_RangeFadeStart", rangeFadeStart.value);
@@ -58,11 +59,11 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			material.SetInt("_LineWidth", Mathf.Clamp(lineWidth.value, 1, 32));
 		}
 
-		public override void Render(CustomPostProcessPass feature, RenderingData renderingData, CommandBuffer cmd, RTHandle source, RTHandle destination, int passIndex)
+		public override void Render(CustomPostProcessRenderContext context, TextureHandle from, TextureHandle to, int passIndex)
 		{
-			feature.Blit(cmd, source, edgeDetectionTarget, blitMaterial, 0);
+			inClassName.Feature.Blit(inClassName.Cmd, inClassName.From, edgeDetectionTarget, blitMaterial, 0);
 			blitMaterial.SetTexture("_EdgeDetectionTexture", edgeDetectionTarget);
-			base.Render(feature, renderingData, cmd, source, destination, 1);
+			base.Render(new InClassName(inClassName.Feature, inClassName.RenderingData, inClassName.Cmd, inClassName.From, inClassName.To, 1));
 		}
 
 		protected override void OnDestroy()

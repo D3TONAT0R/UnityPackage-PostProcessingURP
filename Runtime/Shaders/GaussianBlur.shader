@@ -8,7 +8,6 @@
 	#include "Packages/com.unity.render-pipelines.core/Runtime/Utilities/Blit.hlsl"
 
 	float _Blend;
-	float4 _BlitTexture_TexelSize;
 	//float4 _BlitTexture_ST;
 
 	TEXTURE2D(_SourceTexture);

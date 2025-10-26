@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using UnityEngine.Rendering.RenderGraphModule;
+using UnityEngine.Rendering.RenderGraphModule.Util;
 
 namespace UnityEngine.Rendering.Universal.PostProcessing
 {
@@ -46,18 +48,18 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public virtual bool IsTileCompatible() => true;
 
-		public virtual void Setup(CustomPostProcessPass pass, RenderingData renderingData, List<int> passes)
+		public virtual void Setup(CustomPostProcessPass pass, CustomPostProcessRenderContext context, List<int> passes)
 		{
-			SetupMaterial(pass, renderingData);
+			SetupMaterial(pass, context.renderGraph);
 			if(blitMaterial)
 			{
 				blitMaterial.SetFloat("_Blend", blend.value);
-				ApplyProperties(blitMaterial, renderingData);
+				ApplyProperties(blitMaterial, context);
 			}
 			AddPasses(passes);
 		}
 
-		protected virtual void SetupMaterial(CustomPostProcessPass pass, RenderingData renderingData)
+		protected virtual void SetupMaterial(CustomPostProcessPass pass, RenderGraph graph)
 		{
 			if(!blitMaterial && ShaderName != null)
 			{
@@ -76,12 +78,13 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			}
 		}
 
-		public virtual void Render(CustomPostProcessPass feature, RenderingData renderingData, CommandBuffer cmd, RTHandle from, RTHandle to, int passIndex)
+		public virtual void Render(CustomPostProcessRenderContext context, TextureHandle from, TextureHandle to, int passIndex)
 		{
-			feature.Blit(cmd, from, to, blitMaterial, passIndex);
+			var blitParams = new RenderGraphUtils.BlitMaterialParameters(from, to, blitMaterial, passIndex);
+			context.renderGraph.AddBlitPass(blitParams);
 		}
 
-		public abstract void ApplyProperties(Material material, RenderingData renderingData);
+		public abstract void ApplyProperties(Material material, CustomPostProcessRenderContext context);
 
 		protected override void OnDisable()
 		{
