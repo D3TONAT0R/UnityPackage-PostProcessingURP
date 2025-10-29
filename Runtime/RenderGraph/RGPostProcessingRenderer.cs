@@ -30,8 +30,8 @@ namespace UnityEngine.Rendering.Universal.PostProcessing.RenderGraph
 
 		public virtual void Render(RenderGraphModule.RenderGraph renderGraph, UniversalResourceData frameData, ContextContainer context)
 		{
-			//var data = context.Get<UniversalCameraData>();
-			//if(data != null && (data.isSceneViewCamera && !renderInSceneView) || !data.postProcessEnabled) return;
+			var data = context.Get<UniversalCameraData>();
+			if(data != null && (data.isSceneViewCamera && !renderInSceneView) || !data.postProcessEnabled) return;
 			if(blend <= 0.0f)
 				return;
 			if(!initialized)
@@ -134,7 +134,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing.RenderGraph
 		public override void Create()
 		{
 			pass = new RGPostProcessingPass();
-			pass.renderPassEvent = RenderPassEvent.AfterRendering;
+			pass.renderPassEvent = RenderPassEvent.AfterRenderingPostProcessing;
 			effects = new List<RGPostEffectBase> { invertColors, vignette, colorFilter, textureOverlay };
 		}
 
