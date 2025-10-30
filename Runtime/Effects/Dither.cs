@@ -27,7 +27,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		}
 		private static Texture2D defaultDitherTexture;
 
-		public override void ApplyProperties(Material material, RenderingData renderingData)
+		public override void SetMaterialProperties(Material material)
 		{
 			var texture = ditherTexture.value;
 			if(!texture) texture = DefaultDitherTexture;
@@ -67,11 +67,6 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 				colors[i] = new Color32(b, b, b, b);
 			}
 			return colors;
-		}
-
-		private Color32 GetColor(byte b)
-		{
-			return new Color32(b, b, b, b);
 		}
 	}
 }

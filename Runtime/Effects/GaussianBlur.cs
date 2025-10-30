@@ -64,13 +64,10 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			base.Setup(pass, renderingData, passes);
 		}
 
-		public override void ApplyProperties(Material material, RenderingData renderingData)
+		public override void Render(RenderGraphModule.RenderGraph renderGraph, UniversalResourceData frameData, ContextContainer context)
 		{
-
-		}
-
-		public override void Render(CustomPostProcessPass feature, RenderingData renderingData, CommandBuffer cmd, RTHandle source, RTHandle destination, int passIndex)
-		{
+			//TODO
+			/*
 			cmd.BeginSample("BlurPostEffect");
 
 			int ds = downsample.value;
@@ -106,6 +103,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			cmd.SetGlobalVector("_Parameter", Vector4.zero);
 
 			cmd.EndSample("BlurPostEffect");
+			*/
 		}
 
 		protected override void OnDestroy()

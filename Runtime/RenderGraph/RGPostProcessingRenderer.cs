@@ -3,123 +3,6 @@ using UnityEngine.Rendering.RenderGraphModule;
 
 namespace UnityEngine.Rendering.Universal.PostProcessing.RenderGraph
 {
-	#region Effects
-	public abstract class RGPostEffectBase
-	{
-		public class RGPostProcessingData
-		{
-			public TextureHandle source;
-			public Material material;
-		}
-
-		[Range(0.0f, 1.0f)]
-		public float blend = 1.0f;
-		public bool renderInSceneView = false;
-
-		public Material Material { get; protected set; }
-
-		protected abstract string ShaderName { get; }
-
-		protected bool initialized = false;
-		protected bool missingShader = false;
-
-		public virtual void SetMaterialProperties(Material mat)
-		{
-			mat.SetFloat("_Blend", blend);
-		}
-
-		public virtual void Render(RenderGraphModule.RenderGraph renderGraph, UniversalResourceData frameData, ContextContainer context)
-		{
-			var data = context.Get<UniversalCameraData>();
-			if(data != null && (data.isSceneViewCamera && !renderInSceneView) || !data.postProcessEnabled) return;
-			if(blend <= 0.0f)
-				return;
-			if(!initialized)
-			{
-				var shader = Shader.Find(ShaderName);
-				if(shader == null)
-				{
-					Debug.LogError($"Can't find shader for effect {GetType().Name}: '{ShaderName}'");
-					shader = Shader.Find("Hidden/InternalErrorShader");
-					missingShader = true;
-				}
-				Material = new Material(shader);
-				initialized = true;
-			}
-			if(missingShader)
-			{
-				Debug.LogWarning("Shader missing");
-				return;
-			}
-			SetMaterialProperties(Material);
-			using(var builder = renderGraph.AddRasterRenderPass<RGPostProcessingData>(GetType().Name, out var passData))
-			{
-				passData.source = frameData.activeColorTexture;
-				passData.material = Material;
-
-				builder.UseTexture(passData.source);
-
-				TextureDesc desc = frameData.activeColorTexture.GetDescriptor(renderGraph);
-				desc.depthBufferBits = 0;
-				TextureHandle destination = renderGraph.CreateTexture(desc);
-
-				builder.SetRenderAttachment(destination, 0);
-				builder.AllowGlobalStateModification(true);
-
-				builder.SetRenderFunc<RGPostProcessingData>(Execute);
-
-				frameData.cameraColor = destination;
-			}
-		}
-
-		private static void Execute(RGPostProcessingData data, RasterGraphContext context)
-		{
-			Blitter.BlitTexture(context.cmd, data.source, new Vector4(1, 1, 0, 0), data.material, 0);
-		}
-	}
-
-	[System.Serializable]
-	public class RGInvertColors : RGPostEffectBase
-	{
-		protected override string ShaderName => "Hidden/RGInvertColors";
-	}
-
-	[System.Serializable]
-	public class RGVignette : RGPostEffectBase
-	{
-		protected override string ShaderName => "Hidden/RGVignette";
-	}
-
-	[System.Serializable]
-	public class RGColorFilter : RGPostEffectBase
-	{
-		protected override string ShaderName => "Hidden/RGColorFilter";
-
-		public Color color = Color.white;
-
-		public override void SetMaterialProperties(Material mat)
-		{
-			base.SetMaterialProperties(mat);
-			mat.SetColor("_Color", color);
-		}
-	}
-
-	[System.Serializable]
-	public class RGTextureOverlay : RGPostEffectBase
-	{
-		public Texture2D overlayTexture;
-
-		protected override string ShaderName => "Hidden/RGTextureOverlay";
-
-		public override void SetMaterialProperties(Material mat)
-		{
-			base.SetMaterialProperties(mat);
-			mat.SetTexture("_OverlayTex", overlayTexture);
-		}
-	}
-	#endregion
-
-
 	public class RGPostProcessingRenderer : ScriptableRendererFeature
 	{
 		private RGPostProcessingPass pass;
@@ -129,19 +12,54 @@ namespace UnityEngine.Rendering.Universal.PostProcessing.RenderGraph
 		public RGColorFilter colorFilter;
 		public RGTextureOverlay textureOverlay;
 
-		public List<RGPostEffectBase> effects;
+		public bool renderSimpleEffects = true;
+		public List<RGPostEffectBase> simpleEffects;
+		public List<CustomPostProcessVolumeComponent> volumeEffects;
 
 		public override void Create()
 		{
 			pass = new RGPostProcessingPass();
 			pass.renderPassEvent = RenderPassEvent.AfterRenderingPostProcessing;
-			effects = new List<RGPostEffectBase> { invertColors, vignette, colorFilter, textureOverlay };
+			if(renderSimpleEffects)
+			{
+				simpleEffects = new List<RGPostEffectBase> { invertColors, vignette, colorFilter, textureOverlay };
+			}
+			else
+			{
+				simpleEffects = null;
+			}
+			volumeEffects = new List<CustomPostProcessVolumeComponent>();
 		}
 
 		public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
 		{
-			pass.effects = effects;
+			pass.simpleEffects = simpleEffects;
+			volumeEffects.Clear();
+			var stack = VolumeManager.instance.stack;
+			foreach(var customEffect in EnumerateCustomEffects(stack))
+			{
+				volumeEffects.Add(customEffect);
+			}
+			pass.volumeEffects = volumeEffects;
 			renderer.EnqueuePass(pass);
+		}
+
+		//TODO: very inefficient when performed every frame
+		private IEnumerable<CustomPostProcessVolumeComponent> EnumerateCustomEffects(VolumeStack stack)
+		{
+			var components = (Dictionary<System.Type, VolumeComponent>)typeof(VolumeStack)
+				.GetField("components", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).GetValue(stack);
+			foreach(var kv in components)
+			{
+				if(typeof(CustomPostProcessVolumeComponent).IsAssignableFrom(kv.Key))
+				{
+					var comp = (CustomPostProcessVolumeComponent)kv.Value;
+					//if((int)comp.PassEvent == (int)renderPassEvent)
+					{
+						yield return (CustomPostProcessVolumeComponent)kv.Value;
+					}
+				}
+			}
 		}
 	}
 
@@ -154,19 +72,32 @@ namespace UnityEngine.Rendering.Universal.PostProcessing.RenderGraph
 			public Material material;
 		}
 
-		public List<RGPostEffectBase> effects;
+		public List<RGPostEffectBase> simpleEffects;
+		public List<CustomPostProcessVolumeComponent> volumeEffects;
 
 		public override void RecordRenderGraph(RenderGraphModule.RenderGraph renderGraph, ContextContainer context)
 		{
 			UniversalResourceData frameData = context.Get<UniversalResourceData>();
-			if(effects == null || effects.Count == 0)
-				return;
 			//renderGraph.BeginProfilingSampler(sampler);
-			for(var i = 0; i < effects.Count; i++)
+			if(simpleEffects != null)
 			{
-				var effect = effects[i];
-				effect.Render(renderGraph, frameData, context);
+				for(var i = 0; i < simpleEffects.Count; i++)
+				{
+					var effect = simpleEffects[i];
+					effect.Render(renderGraph, frameData, context);
+				}
 			}
+			if(volumeEffects != null)
+			{
+				for(var i = 0; i < volumeEffects.Count; i++)
+				{
+					var effect = volumeEffects[i];
+					if(effect != null)
+					{
+						effect.Render(renderGraph, frameData, context);
+					}
+				}
+			}	
 			//renderGraph.EndProfilingSampler(sampler);
 		}
 	}

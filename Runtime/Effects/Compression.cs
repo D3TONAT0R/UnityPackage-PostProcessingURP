@@ -48,7 +48,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			RenderingUtils.ReAllocateIfNeeded(ref quantizationHandle, dctDescriptor, name: "Temp_Quantization");
 		}
 
-		public override void ApplyProperties(Material material, RenderingData renderingData)
+		public override void SetMaterialProperties(Material material)
 		{
 			material.SetFloat("_Frequency", frequency.value);
 			material.SetFloat("_Levels", levels.value);
@@ -56,11 +56,14 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			material.SetFloat("_DCTGamma", compressionGamma.value);
 		}
 
-		public override void Render(CustomPostProcessPass feature, RenderingData renderingData, CommandBuffer cmd, RTHandle from, RTHandle to, int passIndex)
+		public override void Render(RenderGraphModule.RenderGraph renderGraph, UniversalResourceData frameData, ContextContainer context)
 		{
+			//TODO
+			/*
 			feature.Blit(cmd, from, dctHandle, blitMaterial, 0);
 			cmd.SetGlobalTexture("_DCTTexture", dctHandle);
 			feature.Blit(cmd, from, to, blitMaterial, 1);
+			*/
 		}
 	}
 }

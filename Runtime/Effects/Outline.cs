@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Rendering.RenderGraphModule.Util;
 using UnityEngine.Rendering.Universal;
 
 namespace UnityEngine.Rendering.Universal.PostProcessing
@@ -45,7 +46,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			RenderingUtils.ReAllocateIfNeeded(ref edgeDetectionTarget, edgeDetectionDescriptor, name: "Temp_EdgeDetection");
 		}
 
-		public override void ApplyProperties(Material material, RenderingData renderingData)
+		public override void SetMaterialProperties(Material material)
 		{
 			material.SetFloat("_Range", range.value);
 			material.SetFloat("_RangeFadeStart", rangeFadeStart.value);
@@ -58,11 +59,24 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			material.SetInt("_LineWidth", Mathf.Clamp(lineWidth.value, 1, 32));
 		}
 
-		public override void Render(CustomPostProcessPass feature, RenderingData renderingData, CommandBuffer cmd, RTHandle source, RTHandle destination, int passIndex)
+		public override void Render(RenderGraphModule.RenderGraph renderGraph, UniversalResourceData frameData, ContextContainer context)
 		{
+			var desc = frameData.activeColorTexture.GetDescriptor(renderGraph);
+			var edgeDetectionTarget = renderGraph.CreateTexture(in desc);
+			renderGraph.AddBlitPass(
+				new RenderGraphUtils.BlitMaterialParameters(frameData.activeColorTexture, edgeDetectionTarget, blitMaterial, 0),
+				"Outline Edge Detection"
+			);
+			using(var builder = renderGraph.AddRasterRenderPass<PassData>("Edge Detection Composite", out var d))
+			{
+				blitMaterial.SetTexture("_EdgeDetectionTexture", renderGraph.ImportTexture(edgeDetectionTarget));
+			}
+			base.Render(renderGraph, frameData, context);
+			/*
 			feature.Blit(cmd, source, edgeDetectionTarget, blitMaterial, 0);
 			blitMaterial.SetTexture("_EdgeDetectionTexture", edgeDetectionTarget);
 			base.Render(feature, renderingData, cmd, source, destination, 1);
+			*/
 		}
 
 		protected override void OnDestroy()

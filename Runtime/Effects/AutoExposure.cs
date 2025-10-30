@@ -139,13 +139,11 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		[Min(0f), Tooltip("Adaptation speed from a light to a dark environment.")]
 		public FloatParameter speedDown = new FloatParameter(1);
 
-		private readonly Dictionary<UniversalAdditionalCameraData, PerCameraData> perCameraDatas = new Dictionary<UniversalAdditionalCameraData, PerCameraData>();
+		private readonly Dictionary<UniversalCameraData, PerCameraData> perCameraDatas = new Dictionary<UniversalCameraData, PerCameraData>();
 
 		public override string ShaderName => "Hidden/PostProcessing/AutoExposureBlit";
 
 		public override PostProcessingPassEvent PassEvent => PostProcessingPassEvent.BeforePostProcessing;
-
-		public override void ApplyProperties(Material material, RenderingData renderingData) { }
 
 		public override bool IsActive()
 		{
@@ -160,17 +158,20 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			if(PostProcessResources.Instance.computeShaders.autoExposure) passes.Add(0);
 		}
 
-		public override void Render(CustomPostProcessPass feature, RenderingData renderingData, CommandBuffer cmd, RTHandle source, RTHandle destination, int passIndex)
+		public override void Render(RenderGraphModule.RenderGraph renderGraph, UniversalResourceData frameData, ContextContainer context)
 		{
-			var urpAdditionalData = renderingData.cameraData.camera.GetUniversalAdditionalCameraData();
+			var urpAdditionalData = context.Get<UniversalCameraData>();
 			var perCameraData = GetPerCameraData(urpAdditionalData);
 
+			//TODO
+			/*
 			perCameraData.logHistogram.Generate(cmd, ref renderingData, source);
 
 			RenderTexture currentAutoExposure = PerformLookup(cmd, ref renderingData, perCameraData, urpAdditionalData.resetHistory);
 
 			blitMaterial.SetTexture("_AutoExposureTex", currentAutoExposure);
 			feature.Blit(cmd, source, destination, blitMaterial, 0);
+			*/
 		}
 
 		private RenderTexture PerformLookup(CommandBuffer cmd, ref RenderingData renderingData, PerCameraData perCameraData, bool resetHistory)
@@ -261,7 +262,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			return Mathf.Exp(x * 0.69314718055994530941723212145818f);
 		}
 
-		private PerCameraData GetPerCameraData(UniversalAdditionalCameraData cameraData)
+		private PerCameraData GetPerCameraData(UniversalCameraData cameraData)
 		{
 			if(!perCameraDatas.TryGetValue(cameraData, out var data))
 			{
