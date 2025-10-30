@@ -5,43 +5,38 @@ namespace UnityEngine.Rendering.Universal.PostProcessing.RenderGraph
 {
 	public class RGPostProcessingRenderer : ScriptableRendererFeature
 	{
-		private RGPostProcessingPass pass;
+		private RGPostProcessingPass beforeSkyboxPass;
+		private RGPostProcessingPass beforeTransparentsPass;
+		private RGPostProcessingPass beforePostPass;
+		private RGPostProcessingPass afterPostPass;
+		private RGPostProcessingPass afterRenderingPass;
 
-		public RGInvertColors invertColors;
-		public RGVignette vignette;
-		public RGColorFilter colorFilter;
-		public RGTextureOverlay textureOverlay;
-
-		public bool renderSimpleEffects = true;
-		public List<RGPostEffectBase> simpleEffects;
+		public bool renderVolumeEffects = true;
 		public List<CustomPostProcessVolumeComponent> volumeEffects;
 
 		public override void Create()
 		{
-			pass = new RGPostProcessingPass();
-			pass.renderPassEvent = RenderPassEvent.AfterRenderingPostProcessing;
-			if(renderSimpleEffects)
-			{
-				simpleEffects = new List<RGPostEffectBase> { invertColors, vignette, colorFilter, textureOverlay };
-			}
-			else
-			{
-				simpleEffects = null;
-			}
+			beforeSkyboxPass = new RGPostProcessingPass(this, RenderPassEvent.BeforeRenderingSkybox);
+			beforeTransparentsPass = new RGPostProcessingPass(this, RenderPassEvent.BeforeRenderingTransparents);
+			beforePostPass = new RGPostProcessingPass(this, RenderPassEvent.BeforeRenderingPostProcessing);
+			afterPostPass = new RGPostProcessingPass(this, RenderPassEvent.AfterRenderingPostProcessing);
+			afterRenderingPass = new RGPostProcessingPass(this, RenderPassEvent.AfterRendering);
 			volumeEffects = new List<CustomPostProcessVolumeComponent>();
 		}
 
 		public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
 		{
-			pass.simpleEffects = simpleEffects;
 			volumeEffects.Clear();
-			var stack = VolumeManager.instance.stack;
-			foreach(var customEffect in EnumerateCustomEffects(stack))
+			if(renderVolumeEffects)
 			{
-				volumeEffects.Add(customEffect);
+				var stack = VolumeManager.instance.stack;
+				foreach(var customEffect in EnumerateCustomEffects(stack))
+				{
+					volumeEffects.Add(customEffect);
+				}
 			}
-			pass.volumeEffects = volumeEffects;
-			renderer.EnqueuePass(pass);
+			renderer.EnqueuePass(beforePostPass);
+			renderer.EnqueuePass(afterPostPass);
 		}
 
 		//TODO: very inefficient when performed every frame
@@ -72,27 +67,24 @@ namespace UnityEngine.Rendering.Universal.PostProcessing.RenderGraph
 			public Material material;
 		}
 
-		public List<RGPostEffectBase> simpleEffects;
-		public List<CustomPostProcessVolumeComponent> volumeEffects;
+		private readonly RGPostProcessingRenderer renderer;
+
+		public RGPostProcessingPass(RGPostProcessingRenderer renderer, RenderPassEvent injectionPoint)
+		{
+			this.renderer = renderer;
+			renderPassEvent = injectionPoint;
+		}
 
 		public override void RecordRenderGraph(RenderGraphModule.RenderGraph renderGraph, ContextContainer context)
 		{
 			UniversalResourceData frameData = context.Get<UniversalResourceData>();
 			//renderGraph.BeginProfilingSampler(sampler);
-			if(simpleEffects != null)
+			if(renderer.volumeEffects != null)
 			{
-				for(var i = 0; i < simpleEffects.Count; i++)
+				for(var i = 0; i < renderer.volumeEffects.Count; i++)
 				{
-					var effect = simpleEffects[i];
-					effect.Render(renderGraph, frameData, context);
-				}
-			}
-			if(volumeEffects != null)
-			{
-				for(var i = 0; i < volumeEffects.Count; i++)
-				{
-					var effect = volumeEffects[i];
-					if(effect != null)
+					var effect = renderer.volumeEffects[i];
+					if(effect != null && effect.RenderPassEvent == renderPassEvent)
 					{
 						effect.Render(renderGraph, frameData, context);
 					}

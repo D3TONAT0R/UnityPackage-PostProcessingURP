@@ -61,6 +61,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public override void Render(RenderGraphModule.RenderGraph renderGraph, UniversalResourceData frameData, ContextContainer context)
 		{
+			if(blend.value <= 0.0f) return;
 			var desc = frameData.activeColorTexture.GetDescriptor(renderGraph);
 			var edgeDetectionTarget = renderGraph.CreateTexture(in desc);
 			renderGraph.AddBlitPass(

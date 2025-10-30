@@ -58,6 +58,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public override void Render(RenderGraphModule.RenderGraph renderGraph, UniversalResourceData frameData, ContextContainer context)
 		{
+			if(blend.value <= 0.0f) return;
 			//TODO
 			/*
 			feature.Blit(cmd, from, dctHandle, blitMaterial, 0);

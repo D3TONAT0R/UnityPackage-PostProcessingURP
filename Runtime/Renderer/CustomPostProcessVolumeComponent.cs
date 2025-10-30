@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine.Rendering.RenderGraphModule;
 
@@ -44,6 +45,22 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		public virtual ScriptableRenderPassInput Requirements => ScriptableRenderPassInput.Color;
 
 		public abstract PostProcessingPassEvent PassEvent { get; }
+
+		public RenderPassEvent RenderPassEvent
+		{
+			get
+			{
+				return PassEvent switch
+				{
+					PostProcessingPassEvent.BeforeSkybox => RenderPassEvent.BeforeRenderingSkybox,
+					PostProcessingPassEvent.BeforeTransparents => RenderPassEvent.BeforeRenderingTransparents,
+					PostProcessingPassEvent.BeforePostProcessing => RenderPassEvent.BeforeRenderingPostProcessing,
+					PostProcessingPassEvent.AfterPostProcessing => RenderPassEvent.AfterRenderingPostProcessing,
+					PostProcessingPassEvent.AfterRendering => RenderPassEvent.AfterRendering,
+					_ => throw new ArgumentOutOfRangeException()
+				};
+			}
+		}
 
 		public virtual bool VisibleInSceneView => true;
 
