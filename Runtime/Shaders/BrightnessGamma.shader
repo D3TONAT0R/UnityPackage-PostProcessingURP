@@ -25,10 +25,10 @@ Shader "Hidden/PostProcessing/BrightnessGamma"
             float4 Frag(Varyings i) : SV_Target
             {
                 float4 color = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, i.texcoord);
-                float4 adjusted = color;
 
+                float4 adjusted = color;
+		        adjusted.rgb += _Brightness;
                 adjusted.rgb = pow(max(adjusted.rgb, 0.001), 1.0 / _Gamma);
-		        adjusted.rgb += _Brightness - 1.0;
 
                 return lerp(color, adjusted, _Blend);
             }

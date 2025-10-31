@@ -83,6 +83,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 				//builder.AllowGlobalStateModification(true);
 				var destination = renderGraph.CreateTexture(in desc);
 				builder.SetRenderAttachment(destination, 0);
+				builder.UseTexture(edgeDetectionTarget);
 				builder.SetGlobalTextureAfterPass(edgeDetectionTarget, Shader.PropertyToID("_EdgeDetectionTexture"));
 				builder.SetRenderFunc<PassData>(ExecuteRasterRenderPass);
 				frameData.cameraColor = destination;
