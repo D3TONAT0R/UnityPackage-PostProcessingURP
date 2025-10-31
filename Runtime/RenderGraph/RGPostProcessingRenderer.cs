@@ -83,10 +83,17 @@ namespace UnityEngine.Rendering.Universal.PostProcessing.RenderGraph
 			{
 				for(var i = 0; i < renderer.volumeEffects.Count; i++)
 				{
-					var effect = renderer.volumeEffects[i];
-					if(effect != null && effect.RenderPassEvent == renderPassEvent)
+					try
 					{
-						effect.Render(renderGraph, frameData, context);
+						var effect = renderer.volumeEffects[i];
+						if(effect != null && effect.RenderPassEvent == renderPassEvent)
+						{
+							effect.Render(renderGraph, frameData, context);
+						}
+					}
+					catch(System.Exception e)
+					{
+						Debug.LogException(e);
 					}
 				}
 			}	

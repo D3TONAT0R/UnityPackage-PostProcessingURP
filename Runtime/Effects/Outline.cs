@@ -61,18 +61,32 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public override void Render(RenderGraphModule.RenderGraph renderGraph, UniversalResourceData frameData, ContextContainer context)
 		{
-			if(blend.value <= 0.0f) return;
+			if(!BeginRender(context)) return;
 			var desc = frameData.activeColorTexture.GetDescriptor(renderGraph);
 			var edgeDetectionTarget = renderGraph.CreateTexture(in desc);
-			renderGraph.AddBlitPass(
-				new RenderGraphUtils.BlitMaterialParameters(frameData.activeColorTexture, edgeDetectionTarget, blitMaterial, 0),
-				"Outline Edge Detection"
-			);
 			using(var builder = renderGraph.AddRasterRenderPass<PassData>("Edge Detection Composite", out var d))
 			{
-				blitMaterial.SetTexture("_EdgeDetectionTexture", renderGraph.ImportTexture(edgeDetectionTarget));
+				d.source = frameData.activeColorTexture;
+				d.material = blitMaterial;
+				d.passIndex = 0;
+				//builder.AllowGlobalStateModification(true);
+				builder.SetRenderAttachment(edgeDetectionTarget, 0);
+				builder.SetGlobalTextureAfterPass(edgeDetectionTarget, Shader.PropertyToID("_EdgeDetectionTexture"));
+				builder.SetRenderFunc<PassData>(ExecuteRasterRenderPass);
 			}
-			base.Render(renderGraph, frameData, context);
+			//Blit(renderGraph, frameData, 1);
+			using(var builder = renderGraph.AddRasterRenderPass<PassData>("Outline Rendering", out var d))
+			{
+				d.source = frameData.activeColorTexture;
+				d.material = blitMaterial;
+				d.passIndex = 1;
+				//builder.AllowGlobalStateModification(true);
+				var destination = renderGraph.CreateTexture(in desc);
+				builder.SetRenderAttachment(destination, 0);
+				builder.SetGlobalTextureAfterPass(edgeDetectionTarget, Shader.PropertyToID("_EdgeDetectionTexture"));
+				builder.SetRenderFunc<PassData>(ExecuteRasterRenderPass);
+				frameData.cameraColor = destination;
+			}
 			/*
 			feature.Blit(cmd, source, edgeDetectionTarget, blitMaterial, 0);
 			blitMaterial.SetTexture("_EdgeDetectionTexture", edgeDetectionTarget);

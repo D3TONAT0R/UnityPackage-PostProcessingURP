@@ -28,6 +28,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		{
 			public TextureHandle source;
 			public Material material;
+			public int passIndex;
 		}
 
 		[Space(10)]
@@ -104,10 +105,16 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public virtual void Render(RenderGraphModule.RenderGraph renderGraph, UniversalResourceData frameData, ContextContainer context)
 		{
+			if(!BeginRender(context)) return;
+			Blit(renderGraph, frameData);
+		}
+
+		protected bool BeginRender(ContextContainer context)
+		{
 			var data = context.Get<UniversalCameraData>();
-			if(data != null && (data.isSceneViewCamera && !VisibleInSceneView) || !data.postProcessEnabled) return;
+			if(data != null && (data.isSceneViewCamera && !VisibleInSceneView) || !data.postProcessEnabled) return false;
 			if(blend.value <= 0.0f)
-				return;
+				return false;
 			//Debug.Log("Blend > 0 for "+GetType().Name);
 			if(!initialized)
 			{
@@ -116,13 +123,19 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			if(!blitMaterial)
 			{
 				Debug.LogWarning("Shader missing");
-				return;
+				return false;
 			}
 			SetMaterialProperties(blitMaterial);
+			return true;
+		}
+
+		protected void Blit(RenderGraphModule.RenderGraph renderGraph, UniversalResourceData frameData, int passIndex = 0)
+		{
 			using(var builder = renderGraph.AddRasterRenderPass<PassData>(GetType().Name, out var passData))
 			{
 				passData.source = frameData.activeColorTexture;
 				passData.material = blitMaterial;
+				passData.passIndex = passIndex;
 
 				builder.UseTexture(passData.source);
 
@@ -132,7 +145,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 				TextureHandle destination = renderGraph.CreateTexture(desc);
 
 				builder.SetRenderAttachment(destination, 0);
-				builder.AllowGlobalStateModification(true);
+				//builder.AllowGlobalStateModification(true);
 
 				builder.AllowPassCulling(false);
 				builder.SetRenderFunc<PassData>(ExecuteRasterRenderPass);
@@ -143,7 +156,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		protected virtual void ExecuteRasterRenderPass(PassData data, RasterGraphContext context)
 		{
-			Blitter.BlitTexture(context.cmd, data.source, new Vector4(1, 1, 0, 0), data.material, 0);
+			Blitter.BlitTexture(context.cmd, data.source, new Vector4(1, 1, 0, 0), data.material, data.passIndex);
 		}
 
 		public virtual void SetMaterialProperties(Material mat)

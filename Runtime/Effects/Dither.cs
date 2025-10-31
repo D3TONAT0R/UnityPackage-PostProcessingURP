@@ -29,6 +29,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public override void SetMaterialProperties(Material material)
 		{
+			base.SetMaterialProperties(material);
 			var texture = ditherTexture.value;
 			if(!texture) texture = DefaultDitherTexture;
 			material.SetTexture("_DitherTex", texture);

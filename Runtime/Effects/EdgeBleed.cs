@@ -33,5 +33,12 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			material.SetFloat("_HorizontalBlur", horizontalBleed.value);
 			material.SetFloat("_VerticalBlur", verticalBleed.value);
 		}
+
+		public override void Render(RenderGraphModule.RenderGraph renderGraph, UniversalResourceData frameData, ContextContainer context)
+		{
+			if(!BeginRender(context)) return;
+			Blit(renderGraph, frameData, 0);
+			Blit(renderGraph, frameData, 1);
+		}
 	}
 }
