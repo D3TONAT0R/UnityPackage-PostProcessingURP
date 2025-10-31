@@ -115,7 +115,6 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			if(data != null && (data.isSceneViewCamera && !VisibleInSceneView) || !data.postProcessEnabled) return false;
 			if(blend.value <= 0.0f)
 				return false;
-			//Debug.Log("Blend > 0 for "+GetType().Name);
 			if(!initialized)
 			{
 				Initialize();
