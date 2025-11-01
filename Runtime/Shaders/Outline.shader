@@ -126,6 +126,8 @@ Shader "Hidden/PostProcessing/Outline"
 			float4 _BackgroundColor;
 			float4 _LineColor;
 
+			float4 _BlitTexture_TexelSize;
+
 			TEXTURE2D(_EdgeDetectionTexture);
 
 			float4 Frag(Varyings i) : SV_Target
