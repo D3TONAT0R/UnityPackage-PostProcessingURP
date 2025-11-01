@@ -161,14 +161,9 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 				&& SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.RFloat);
 		}
 
-		public override void AddPasses(List<int> passes)
-		{
-			if(PostProcessResources.Instance.computeShaders.autoExposure) passes.Add(0);
-		}
-
 		public override void Render(RenderGraphModule.RenderGraph renderGraph, UniversalResourceData frameData, ContextContainer context)
 		{
-			if(blend.value <= 0.0f) return;
+			if(!BeginRender(context)) return;
 			var urpAdditionalData = context.Get<UniversalCameraData>();
 			var perCameraData = GetPerCameraData(urpAdditionalData);
 
@@ -176,10 +171,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 			PerformLookup(renderGraph, frameData, context, perCameraData);
 
-			/*
-			blitMaterial.SetTexture("_AutoExposureTex", currentAutoExposure);
-			feature.Blit(cmd, source, destination, blitMaterial, 0);
-			*/
+			Blit(renderGraph, frameData);
 		}
 
 		class AutoExposurePassData
@@ -258,10 +250,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 					perCameraData.autoExposurePingPong[xrActiveEye] = ++pp % 2;
 				}
 				builder.SetRenderFunc<AutoExposurePassData>(ExecuteLookup);
-
-				RenderTexture currentAutoExposure;
-
-				
+				builder.SetGlobalTextureAfterPass(data.autoExposureDst, Shader.PropertyToID("_AutoExposureTex"));
 			}
 
 			perCameraData.UpdateCounter();
@@ -271,7 +260,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		{
 			var cmd = ctx.cmd;
 			var computeShader = PostProcessResources.Instance.computeShaders.autoExposure;
-			cmd.SetComputeBufferParam(computeShader, data.kernel, "_HistogramBuffer", data.perCameraData.logHistogram.data);
+			cmd.SetComputeBufferParam(computeShader, data.kernel, "_HistogramBuffer", data.perCameraData.logHistogram.buffer);
 			cmd.SetComputeVectorParam(computeShader, "_Params1", new Vector4(data.lowPercent * 0.01f, data.highPercent * 0.01f, Exp2(data.minimumEV), Exp2(data.maximumEV)));
 			cmd.SetComputeVectorParam(computeShader, "_Params2", new Vector4(data.speedDown, data.speedUp, data.exposureCompensation, Time.deltaTime));
 			cmd.SetComputeVectorParam(computeShader, "_ScaleOffsetRes", data.scaleOffsetRes);
