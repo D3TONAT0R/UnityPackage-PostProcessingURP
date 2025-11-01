@@ -48,6 +48,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public override void SetMaterialProperties(Material material)
 		{
+			base.SetMaterialProperties(material);
 			material.SetFloat("_Range", range.value);
 			material.SetFloat("_RangeFadeStart", rangeFadeStart.value);
 			material.SetFloat("_DepthThreshold", depthThreshold.value);

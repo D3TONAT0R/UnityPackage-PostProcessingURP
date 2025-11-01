@@ -23,13 +23,33 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
         public void Generate(RenderGraphModule.RenderGraph renderGraph, UniversalResourceData frameData)
         {
             uint threadX, threadY, threadZ;
-            var scaleOffsetRes = GetHistogramScaleOffsetRes(frameData);
+            var scaleOffsetRes = GetHistogramScaleOffsetRes(renderGraph, frameData);
             var compute = PostProcessResources.Instance.computeShaders.exposureHistogram;
 
             // Clear the buffer on every frame as we use it to accumulate luminance values on each frame
             int kernel = compute.FindKernel("KEyeHistogramClear");
             using(var builder = renderGraph.AddComputePass<PassData>("Histogram", out var d))
             {
+                builder.SetRenderFunc<PassData>((d, ctx) =>
+                {
+                    ctx.cmd.SetComputeBufferParam(compute, kernel, "_HistogramBuffer", data);
+                    compute.GetKernelThreadGroupSizes(kernel, out threadX, out threadY, out threadZ);
+                    ctx.cmd.DispatchCompute(compute, kernel, Mathf.CeilToInt(k_Bins / (float)threadX), 1, 1);
+
+                    // Get a log histogram
+                    kernel = compute.FindKernel("KEyeHistogram");
+                    ctx.cmd.SetComputeBufferParam(compute, kernel, "_HistogramBuffer", data);
+                    ctx.cmd.SetComputeTextureParam(compute, kernel, "_Source", frameData.activeColorTexture);
+                    ctx.cmd.SetComputeVectorParam(compute, "_ScaleOffsetRes", scaleOffsetRes);
+
+                    compute.GetKernelThreadGroupSizes(kernel, out threadX, out threadY, out threadZ);
+                    ctx.cmd.DispatchCompute(compute, kernel,
+	                    Mathf.CeilToInt(scaleOffsetRes.z / 2f / threadX),
+	                    Mathf.CeilToInt(scaleOffsetRes.w / 2f / threadY),
+	                    1
+                    );
+
+				});
             }
             /*
                 cmd.SetComputeBufferParam(compute, kernel, "_HistogramBuffer", data);
@@ -51,12 +71,12 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
             */
         }
 
-        public Vector4 GetHistogramScaleOffsetRes(UniversalResourceData frameData)
+        public Vector4 GetHistogramScaleOffsetRes(RenderGraphModule.RenderGraph renderGraph, UniversalResourceData frameData)
         {
             float diff = rangeMax - rangeMin;
             float scale = 1f / diff;
             float offset = -rangeMin * scale;
-            var descriptor = frameData.cameraColor.GetDescriptor();
+            var descriptor = frameData.cameraColor.GetDescriptor(renderGraph);
             return new Vector4(scale, offset, descriptor.width, descriptor.height);
         }
 
