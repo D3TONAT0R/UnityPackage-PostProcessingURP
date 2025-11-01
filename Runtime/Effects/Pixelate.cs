@@ -13,8 +13,9 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public override PostProcessingPassEvent PassEvent => PostProcessingPassEvent.AfterPostProcessing;
 
-		public override void ApplyProperties(Material material, RenderingData renderingData)
+		public override void SetMaterialProperties(Material material)
 		{
+			base.SetMaterialProperties(material);
 			material.SetInt("_VertResolution", verticalResolution.value);
 		}
 	}

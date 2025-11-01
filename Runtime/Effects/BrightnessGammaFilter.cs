@@ -12,15 +12,16 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		public static float GlobalGammaPreference { get; set; } = 1f;
 
 		public BoolParameter useGlobalPreferenceValues = new BoolParameter(true, false);
-		public ClampedFloatParameter brightness = new ClampedFloatParameter(1f, 0f, 2f, false);
+		public ClampedFloatParameter brightness = new ClampedFloatParameter(1f, -1, 1, false);
 		public ClampedFloatParameter gamma = new ClampedFloatParameter(1f, 0.01f, 2f, false);
 
 		public override string ShaderName => "Hidden/PostProcessing/BrightnessGamma";
 
-		public override PostProcessingPassEvent PassEvent => PostProcessingPassEvent.AfterRendering;
+		public override PostProcessingPassEvent PassEvent => PostProcessingPassEvent.AfterPostProcessing;
 
-		public override void ApplyProperties(Material material, RenderingData renderingData)
+		public override void SetMaterialProperties(Material material)
 		{
+			base.SetMaterialProperties(material);
 			float brightnessValue;
 			float gammaValue;
 			if(useGlobalPreferenceValues.value)

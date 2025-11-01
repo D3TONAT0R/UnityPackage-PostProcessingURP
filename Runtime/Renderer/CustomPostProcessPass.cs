@@ -108,7 +108,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 				int passIndex = passIndices[j];
 				var from = lastTarget;
 				var to = lastTarget == destinationAHandle ? destinationBHandle : destinationAHandle;
-				effect.Render(this, renderingData, cmd, from, to, passIndex);
+				//effect.Render(this, renderingData, cmd, from, to, passIndex);
 				lastTarget = to;
 			}
 		}

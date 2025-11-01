@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using UnityEngine.Rendering.RenderGraphModule;
+using UnityEngine.Rendering.RenderGraphModule.Util;
 
 namespace UnityEngine.Rendering.Universal.PostProcessing
 {
@@ -64,26 +66,39 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			base.Setup(pass, renderingData, passes);
 		}
 
-		public override void ApplyProperties(Material material, RenderingData renderingData)
+		public override void Render(RenderGraphModule.RenderGraph renderGraph, UniversalResourceData frameData, ContextContainer context)
 		{
+			if(!BeginRender(context)) return;
 
-		}
-
-		public override void Render(CustomPostProcessPass feature, RenderingData renderingData, CommandBuffer cmd, RTHandle source, RTHandle destination, int passIndex)
-		{
-			cmd.BeginSample("BlurPostEffect");
-
-			int ds = downsample.value;
-
-			float widthMod = 1.0f / (1.0f * (1 << ds));
-
-			float _blend = Mathf.Min(blend.value, 1);
 			int iterations = blurIterations.value;
 			float size = blurSize.value;
 
-			cmd.SetGlobalTexture("_SourceTexture", source);
+			var cameraDescriptor = frameData.activeColorTexture.GetDescriptor(renderGraph);
 
-			feature.Blit(cmd, source, tempRT_A, blitMaterial, (int)Pass.Downsample);
+			int down = downsample.value;
+			var downsampledDesc = cameraDescriptor;
+			downsampledDesc.width >>= down;
+			downsampledDesc.height >>= down;
+
+			var downsampled = renderGraph.CreateTexture(downsampledDesc);
+			float widthMod = 1.0f / (1.0f * (1 << down));
+
+			//Downsample
+			using(var builder = renderGraph.AddRasterRenderPass<PassData>("Gaussian Blur", out var data))
+			{
+				data.source = frameData.activeColorTexture;
+				data.material = blitMaterial;
+				data.passIndex = (int)Pass.Downsample;
+				builder.SetRenderAttachment(downsampled, 0);
+				builder.AllowGlobalStateModification(true);
+				builder.UseTexture(data.source);
+				builder.SetRenderFunc<PassData>((d, ctx) =>
+				{
+					ctx.cmd.SetGlobalTexture("_SourceTexture", d.source);
+					Blitter.BlitTexture(ctx.cmd, d.source, new Vector4(1, 1, 0, 0), d.material, d.passIndex);
+				});
+				frameData.cameraColor = downsampled;
+			}
 
 			int horizontalPass = (int)(mode.value == Mode.SgxGaussian ? Pass.BlurHorizontalSGX : Pass.BlurHorizontal);
 			int verticalPass = (int)(mode.value == Mode.SgxGaussian ? Pass.BlurVerticalSGX : Pass.BlurVertical);
@@ -91,21 +106,26 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			for(int i = 0; i < iterations; i++)
 			{
 				float iterationOffs = i * 1.0f;
-				var parameters = new Vector4(size * widthMod + iterationOffs, -size * widthMod - iterationOffs, _blend, 0.0f);
-				cmd.SetGlobalVector("_Parameter", parameters);
+				using(var builder = renderGraph.AddUnsafePass<PassData>("Set Parameters", out var d))
+				{
+					builder.AllowGlobalStateModification(true);
+					builder.SetRenderFunc<PassData>((_, ctx) =>
+					{
+						var parameters = new Vector4(size * widthMod + iterationOffs, -size * widthMod - iterationOffs, blend.value, 0.0f);
+						var cmd = ctx.cmd;
+						cmd.SetGlobalVector("_Parameter", parameters);
+					});
+				}
 
 				// Vertical blur
-				feature.Blit(cmd, tempRT_A, tempRT_B, blitMaterial, verticalPass);
+				Blit(renderGraph, frameData, verticalPass);
 
 				// Horizontal blur
-				feature.Blit(cmd, tempRT_B, tempRT_A, blitMaterial, horizontalPass);
+				Blit(renderGraph, frameData, horizontalPass);
 			}
 
-			feature.Blit(cmd, tempRT_A, destination, blitMaterial, (int)Pass.FinalBlit);
-
-			cmd.SetGlobalVector("_Parameter", Vector4.zero);
-
-			cmd.EndSample("BlurPostEffect");
+			//TODO: blit resolution does not match screen when downsampled
+			Blit(renderGraph, frameData, (int)Pass.FinalBlit);
 		}
 
 		protected override void OnDestroy()

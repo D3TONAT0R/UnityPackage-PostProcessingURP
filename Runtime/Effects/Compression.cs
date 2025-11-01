@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering.RenderGraphModule;
 using UnityEngine.Rendering.Universal;
 
 namespace UnityEngine.Rendering.Universal.PostProcessing
@@ -18,7 +19,9 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public override string ShaderName => "Hidden/PostProcessing/Compression";
 
-		public override PostProcessingPassEvent PassEvent => PostProcessingPassEvent.AfterRendering;
+		public override PostProcessingPassEvent PassEvent => PostProcessingPassEvent.AfterPostProcessing;
+
+		public override bool VisibleInSceneView => false;
 
 		public override void AddPasses(List<int> passes)
 		{
@@ -48,19 +51,89 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			RenderingUtils.ReAllocateIfNeeded(ref quantizationHandle, dctDescriptor, name: "Temp_Quantization");
 		}
 
-		public override void ApplyProperties(Material material, RenderingData renderingData)
+		public override void SetMaterialProperties(Material material)
 		{
+			base.SetMaterialProperties(material);
 			material.SetFloat("_Frequency", frequency.value);
 			material.SetFloat("_Levels", levels.value);
 			material.SetInt("_BlockSize", blockSize.value);
 			material.SetFloat("_DCTGamma", compressionGamma.value);
 		}
 
-		public override void Render(CustomPostProcessPass feature, RenderingData renderingData, CommandBuffer cmd, RTHandle from, RTHandle to, int passIndex)
+		class DCTData : ContextItem
 		{
+			public TextureHandle dctTexture;
+
+			public override void Reset()
+			{
+				dctTexture = TextureHandle.nullHandle;
+			}
+		}
+
+		class CompressionPassData : PassData
+		{
+			public TextureHandle dctTexture;
+		}
+
+		public override void Render(RenderGraphModule.RenderGraph renderGraph, UniversalResourceData frameData, ContextContainer context)
+		{
+			if(!BeginRender(context)) return;
+			using(var builder = renderGraph.AddRasterRenderPass<PassData>("DCT Pass", out var passData))
+			{
+				passData.source = frameData.activeColorTexture;
+				passData.material = blitMaterial;
+				passData.passIndex = 0;
+
+				builder.UseTexture(passData.source);
+
+				TextureDesc desc = frameData.activeColorTexture.GetDescriptor(renderGraph);
+				desc.depthBufferBits = 0;
+				desc.name = "DCTTexture";
+				TextureHandle dct = renderGraph.CreateTexture(desc);
+
+				builder.SetRenderAttachment(dct, 0);
+				var dctData = context.Create<DCTData>();
+				dctData.dctTexture = dct;
+
+				builder.AllowPassCulling(false);
+				builder.AllowGlobalStateModification(true);
+				builder.SetRenderFunc<PassData>(ExecuteRasterRenderPass);
+				builder.SetGlobalTextureAfterPass(dct, Shader.PropertyToID("_DCTTexture"));
+			}
+			Blit(renderGraph, frameData, 1);
+			/*
+			using(var builder = renderGraph.AddRasterRenderPass<CompressionPassData>("Compression", out var passData))
+			{
+				passData.source = frameData.activeColorTexture;
+				passData.material = blitMaterial;
+				passData.passIndex = 1;
+
+				builder.UseTexture(passData.source);
+
+				TextureDesc desc = frameData.activeColorTexture.GetDescriptor(renderGraph);
+				desc.depthBufferBits = 0;
+				desc.name = "Output";
+				TextureHandle destination = renderGraph.CreateTexture(desc);
+
+				builder.SetRenderAttachment(destination, 0);
+
+				builder.AllowPassCulling(false);
+				builder.SetRenderFunc<CompressionPassData>((data, ctx) =>
+				{
+					//blitMaterial.SetTexture("_DCTTexture", renderGraph.ImportTexture(context.Get<DCTData>().dctTexture));
+					//blitMaterial.SetTexture("_DCTTexture", renderGraph.ImportTexture(data.dctTexture));
+					blitMaterial.SetTexture("_DCTTexture", data.dctTexture);
+					Blitter.BlitTexture(ctx.cmd, data.source, new Vector4(1, 1, 0, 0), data.material, data.passIndex);
+				});
+
+				frameData.cameraColor = destination;
+			}
+			//TODO
+			/*
 			feature.Blit(cmd, from, dctHandle, blitMaterial, 0);
 			cmd.SetGlobalTexture("_DCTTexture", dctHandle);
 			feature.Blit(cmd, from, to, blitMaterial, 1);
+			*/
 		}
 	}
 }

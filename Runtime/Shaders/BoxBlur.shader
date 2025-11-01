@@ -11,8 +11,6 @@ Shader "Hidden/PostProcessing/BoxBlur"
         float _VerticalBlur;
         float _HorizontalBlur;
     
-        float4 _BlitTexture_TexelSize;
-    
         float4 BlurVertical (Varyings input) : SV_Target
         {
             const float BLUR_SAMPLES = 64;
