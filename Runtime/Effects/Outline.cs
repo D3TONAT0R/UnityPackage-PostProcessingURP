@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.RenderGraphModule;
-using UnityEngine.Rendering.RenderGraphModule.Util;
 using UnityEngine.Rendering.Universal;
 
 namespace UnityEngine.Rendering.Universal.PostProcessing
@@ -10,10 +9,6 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 	[VolumeComponentMenu("Post-processing/Outline")]
 	public class Outline : CustomPostProcessVolumeComponent
 	{
-		public class SetMaterialPassData
-		{
-		}
-
 		public IntParameter lineWidth = new IntParameter(1, false);
 		public FloatParameter range = new FloatParameter(25, false);
 		public ClampedFloatParameter rangeFadeStart = new ClampedFloatParameter(0.5f, 0, 0.999f, false);
@@ -24,6 +19,9 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		public ColorParameter lineColor = new ColorParameter(Color.black, false);
 
 		public ClampedFloatParameter distortion = new ClampedFloatParameter(0.005f, 0, 0.02f, false);
+
+		private RenderTextureDescriptor edgeDetectionDescriptor;
+		private RTHandle edgeDetectionTarget;
 
 		public override bool IgnorePostProcessingFlag => false;
 
@@ -36,11 +34,16 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		protected override void OnEnable()
 		{
 			base.OnEnable();
+			edgeDetectionDescriptor = new RenderTextureDescriptor(Screen.width, Screen.height, RenderTextureFormat.ARGB32, 0, 0);
 		}
 
-		public override void Setup(CustomPostProcessPass pass, CustomPostProcessRenderContext context, List<int> passes)
+		public override void Setup(CustomPostProcessRenderContext context, List<int> passes)
 		{
-			base.Setup(pass, context, passes);
+			base.Setup(pass, renderingData, passes);
+			var targetDescriptor = renderingData.cameraData.cameraTargetDescriptor;
+			edgeDetectionDescriptor.width = targetDescriptor.width;
+			edgeDetectionDescriptor.height = targetDescriptor.height;
+			RenderingUtils.ReAllocateIfNeeded(ref edgeDetectionTarget, edgeDetectionDescriptor, name: "Temp_EdgeDetection");
 		}
 
 		public override void ApplyProperties(Material material, CustomPostProcessRenderContext context)
@@ -58,19 +61,6 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public override void Render(CustomPostProcessRenderContext context, TextureHandle from, TextureHandle to, int passIndex)
 		{
-			var edgeDetectionDescriptor = new RenderTextureDescriptor(Screen.width, Screen.height, RenderTextureFormat.ARGB32, 0, 0);
-			var targetDescriptor = context.cameraData.cameraTargetDescriptor;
-			edgeDetectionDescriptor.width = targetDescriptor.width;
-			edgeDetectionDescriptor.height = targetDescriptor.height;
-
-			var edgeDetectionTextureDesc = new TextureDesc(edgeDetectionDescriptor);
-			edgeDetectionTextureDesc.name = "EdgeDetectionTexture";
-			var edgeDetectionTexture = context.renderGraph.CreateTexture(edgeDetectionTextureDesc);
-
-			context.renderGraph.AddBlitPass(new RenderGraphUtils.BlitMaterialParameters(from, edgeDetectionTexture, blitMaterial, 0));
-			context.renderGraph.AddRasterRenderPass<>("SetTexturePass", )
-			blitMaterial.sett
-
 			inClassName.Feature.Blit(inClassName.Cmd, inClassName.From, edgeDetectionTarget, blitMaterial, 0);
 			blitMaterial.SetTexture("_EdgeDetectionTexture", edgeDetectionTarget);
 			base.Render(new InClassName(inClassName.Feature, inClassName.RenderingData, inClassName.Cmd, inClassName.From, inClassName.To, 1));
