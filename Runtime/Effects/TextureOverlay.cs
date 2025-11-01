@@ -33,7 +33,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public override PostProcessingPassEvent PassEvent => injectionPoint.value;
 
-		public override void ApplyProperties(Material material, CustomPostProcessRenderContext context)
+		public override void ApplyProperties(Material material, RenderingData renderingData)
 		{
 			material.SetInt("_BlendMode", (int)blendMode.value);
 			material.SetTexture("_OverlayTexture", texture.value ? texture.value : Texture2D.whiteTexture);

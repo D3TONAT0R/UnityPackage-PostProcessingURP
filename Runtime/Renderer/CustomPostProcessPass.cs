@@ -1,42 +1,28 @@
 using System.Collections.Generic;
 using UnityEngine.Rendering.RenderGraphModule;
-using UnityEngine.Rendering.RenderGraphModule.Util;
 
 namespace UnityEngine.Rendering.Universal.PostProcessing
 {
-	public class CustomPostProcessPassData
-	{
-		public CustomPostProcessPass pass;
-		public RenderPassEvent passEvent;
-		public TextureHandle destinationA;
-		public TextureHandle destinationB;
-		public List<CustomPostProcessVolumeComponent> activeEffects;
-		public List<int> passIndices;
-	}
-
-	public struct CustomPostProcessRenderContext
-	{
-		public readonly RenderGraph renderGraph;
-		public readonly ContextContainer frameData;
-		public readonly UniversalResourceData urpData;
-		public readonly UniversalCameraData cameraData;
-
-		public CustomPostProcessRenderContext(RenderGraph renderGraph, ContextContainer frameData)
-		{
-			this.renderGraph = renderGraph;
-			this.frameData = frameData;
-			urpData = frameData.Get<UniversalResourceData>();
-			cameraData = frameData.Get<UniversalCameraData>();
-		}
-	}
-
 	[System.Serializable]
 	public class CustomPostProcessPass : ScriptableRenderPass
 	{
+		class PassData
+		{
+			public CustomPostProcessPass pass;
+			public RenderPassEvent passEvent;
+			public TextureHandle destinationA;
+			public TextureHandle destinationB;
+			public List<CustomPostProcessVolumeComponent> activeEffects;
+			public List<int> passIndices;
+		}
 
 		// Used to render from camera to post processings
 		// back and forth, until we render the final image to
 		// the camera
+		private static RenderTextureDescriptor destinationDescriptor;
+		private static RTHandle destinationAHandle;
+		private static RTHandle destinationBHandle;
+
 		private static readonly List<CustomPostProcessVolumeComponent> activeEffects = new List<CustomPostProcessVolumeComponent>();
 		private static readonly List<int> passIndices = new List<int>();
 
@@ -49,6 +35,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			this.renderer = renderer;
 			this.renderPassEvent = renderPassEvent;
 			orderingListRef = ordering;
+			destinationDescriptor = new RenderTextureDescriptor(Screen.width, Screen.height, RenderTextureFormat.Default, 0);
 		}
 
 		// This method adds and configures one or more render passes in the render graph.
@@ -56,55 +43,80 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		// but does not include adding commands to command buffers.
 		public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
 		{
-			var context = new CustomPostProcessRenderContext(renderGraph, frameData);
-			Setup(context.urpData, context.cameraData);
-
-
-			if(activeEffects.Count == 0) return;
-
 			string passName = "Custom Post Process Pass";
 
-			var cameraColor = context.urpData.activeColorTexture;
-			var destinationA = cameraColor;
-			var textureDescriptor = renderGraph.GetTextureDesc(destinationA);
-			textureDescriptor.name = "DestinationB";
-			var destinationB = renderGraph.CreateTexture(textureDescriptor);
-
-			bool sourceB = false;
-			int count = activeEffects.Count;
-			for(int i = 0; i < count; i++)
+			// Add a raster render pass to the render graph. The PassData type parameter determines
+			// the type of the passData output variable.
+			using(var builder = renderGraph.AddRasterRenderPass<PassData>(passName,
+				out var passData))
 			{
-				RenderEffect(activeEffects[i], renderGraph, destinationA, destinationB, ref sourceB);
-			}
+				// UniversalResourceData contains all the texture references used by URP,
+				// including the active color and depth textures of the camera.
+				UniversalResourceData resourceData = frameData.Get<UniversalResourceData>();
 
-			// Blit from the last temporary render texture back to the camera target
-			if(sourceB)
-			{
-				renderGraph.AddCopyPass(destinationB, cameraColor);
+				// Create a destination texture for the copy operation based on the settings,
+				// such as dimensions, of the textures that the camera uses.
+				// Set msaaSamples to 1 to get a non-multisampled destination texture.
+				// Set depthBufferBits to 0 to ensure that the CreateRenderGraphTexture method
+				// creates a color texture and not a depth texture.
+				UniversalCameraData cameraData = frameData.Get<UniversalCameraData>();
+				RenderTextureDescriptor desc = cameraData.cameraTargetDescriptor;
+				desc.msaaSamples = 1;
+				desc.depthBufferBits = 0;
+
+				// Populate passData with the data needed by the rendering function
+				// of the render pass.
+				// Use the camera's active color texture
+				// as the source texture for the copy operation.
+				passData.destinationA = resourceData.activeColorTexture;
+				passData.destinationB = UniversalRenderer.CreateRenderGraphTexture(renderGraph, desc, "DestinationB", false);
+
+				builder.SetRenderAttachment(passData.destinationA, 0, AccessFlags.ReadWrite);
+				builder.SetRenderAttachment(passData.destinationB, 0, AccessFlags.ReadWrite);
+				/*
+				// For demonstrative purposes, this sample creates a temporary destination texture.
+				// UniversalRenderer.CreateRenderGraphTexture is a helper method
+				// that calls the RenderGraph.CreateTexture method.
+				// Using a RenderTextureDescriptor instance instead of a TextureDesc instance
+				// simplifies your code.
+				TextureHandle destination =
+					UniversalRenderer.CreateRenderGraphTexture(renderGraph, desc,
+						"CopyTexture", false);
+
+				// Declare that this render pass uses the source texture as a read-only input.
+				builder.UseTexture(passData.copySourceTexture);
+
+				// Declare that this render pass uses the temporary destination texture
+				// as its color render target.
+				// This is similar to cmd.SetRenderTarget prior to the RenderGraph API.
+				builder.SetRenderAttachment(destination, 0);
+
+				// RenderGraph automatically determines that it can remove this render pass
+				// because its results, which are stored in the temporary destination texture,
+				// are not used by other passes.
+				// For demonstrative purposes, this sample turns off this behavior to make sure
+				// that render graph executes the render pass. 
+				builder.AllowPassCulling(false);
+				*/
+
+				// Set the ExecutePass method as the rendering function that render graph calls
+				// for the render pass. 
+				// This sample uses a lambda expression to avoid memory allocations.
+				builder.SetRenderFunc((PassData data, RasterGraphContext context)
+					=> Execute(data, context));
 			}
 		}
 
-		private void Setup(UniversalResourceData urpData, UniversalCameraData cameraData)
+		public override void Configure(CommandBuffer cmd, RenderTextureDescriptor cameraTextureDescriptor)
 		{
-			var stack = VolumeManager.instance.stack;
+			// Set the texture size to be the same as the camera target size.
+			destinationDescriptor.width = cameraTextureDescriptor.width;
+			destinationDescriptor.height = cameraTextureDescriptor.height;
+			destinationDescriptor.colorFormat = cameraTextureDescriptor.colorFormat;
 
-			var requirements = ScriptableRenderPassInput.Color;
-
-			activeEffects.Clear();
-			foreach(var customEffect in EnumerateCustomEffects(stack))
-			{
-				bool shouldRender = customEffect.IsActive() && (cameraData.postProcessEnabled || customEffect.IgnorePostProcessingFlag);
-				if(cameraData.cameraType == CameraType.SceneView && !customEffect.VisibleInSceneView) shouldRender = false;
-				// Only process if the effect is active & enabled
-				if(shouldRender)
-				{
-					activeEffects.Add(customEffect);
-					requirements |= customEffect.Requirements;
-				}
-			}
-			OrderEffects();
-
-			ConfigureInput(requirements);
+			// Check if the descriptor has changed, and reallocate the RTHandle if necessary
+			RenderingUtils.ReAllocateIfNeeded(ref destinationAHandle, destinationDescriptor, name: "Temp_A");
+			RenderingUtils.ReAllocateIfNeeded(ref destinationBHandle, destinationDescriptor, name: "Temp_B");
 		}
 
 		public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
@@ -142,49 +154,43 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		// The actual execution of the pass. This is where custom rendering occurs.
 		//public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
-		private static void Execute(CustomPostProcessPassData data, RasterGraphContext context)
+		private static void Execute(PassData data, RasterGraphContext context)
 		{
-			/*
 			if(data.activeEffects.Count == 0) return;
 
 			//Get a CommandBuffer from pool.
-			//CommandBuffer cmd = CommandBufferPool.Get("CustomPostProcess " + data.passEvent);
-			var cmd = context.cmd;
+			CommandBuffer cmd = CommandBufferPool.Get("CustomPostProcess " + renderPassEvent);
 
-			var cameraTargetHandle = data.destinationA;
-			var lastTarget = cameraTargetHandle;
+			RTHandle cameraTargetHandle = data.destinationA;
+			RTHandle lastTarget = cameraTargetHandle;
 
 			int count = activeEffects.Count;
 			for(int i = 0; i < count; i++)
 			{
-				RenderEffect(activeEffects[i], , cmd, ref lastTarget);
+				RenderEffect(activeEffects[i], data, cmd, ref lastTarget);
 			}
 
 			// Blit from the last temporary render texture back to the camera target,
-			Blitter.BlitTexture(cmd, lastTarget, cameraTargetHandle, (Material)null, 0);
 			Blit(cmd, lastTarget, cameraTargetHandle);
-			cmd.
 
 			//Execute the command buffer and release it back to the pool.
-			context.cmd.draw
 			context.ExecuteCommandBuffer(cmd);
 			CommandBufferPool.Release(cmd);
-			*/
 		}
 
-		private void RenderEffect(CustomPostProcessVolumeComponent effect, CustomPostProcessRenderContext context, TextureHandle destinationA, TextureHandle destinationB, ref bool sourceB)
+		private static void RenderEffect(CustomPostProcessVolumeComponent effect, PassData data, CommandBuffer cmd, ref RTHandle lastTarget)
 		{
 			passIndices.Clear();
-			effect.Setup(this, context, passIndices);
+			effect.Setup(data.pass, data, passIndices);
 			int passCount = passIndices.Count;
 			if(passCount == 0) Debug.LogWarning($"Effect does not have any passes set: " + effect.GetType());
 			for(int j = 0; j < passCount; j++)
 			{
 				int passIndex = passIndices[j];
-				var source = sourceB ? destinationB : destinationA;
-				var destination = sourceB ? destinationA : destinationB;
-				effect.Render(context, source, destination, passIndex);
-				sourceB = !sourceB;
+				var from = lastTarget;
+				var to = lastTarget == destinationAHandle ? destinationBHandle : destinationAHandle;
+				effect.Render(data.pass, data, cmd, from, to, passIndex);
+				lastTarget = to;
 			}
 		}
 
@@ -208,8 +214,8 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public void Dispose()
 		{
-			//if(destinationAHandle != null) destinationAHandle.Release();
-			//if(destinationBHandle != null) destinationBHandle.Release();
+			if(destinationAHandle != null) destinationAHandle.Release();
+			if(destinationBHandle != null) destinationBHandle.Release();
 		}
 	} 
 }

@@ -27,7 +27,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public override PostProcessingPassEvent PassEvent => injectionPoint.value;
 
-		public override void ApplyProperties(Material material, CustomPostProcessRenderContext context)
+		public override void ApplyProperties(Material material, RenderingData renderingData)
 		{
 			material.SetFloat("_HorizontalBlur", horizontalBlur.value);
 			material.SetFloat("_VerticalBlur", verticalBlur.value);

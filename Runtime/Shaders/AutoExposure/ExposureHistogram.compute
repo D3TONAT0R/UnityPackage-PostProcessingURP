@@ -10,6 +10,7 @@
 
 RWStructuredBuffer<uint> _HistogramBuffer;
 Texture2D<float4> _Source;
+SamplerState sampler_LinearClamp;
 
 CBUFFER_START(Params)
     float4 _ScaleOffsetRes; // x: scale, y: offset, z: width, w: height

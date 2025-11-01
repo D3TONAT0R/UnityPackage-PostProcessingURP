@@ -19,7 +19,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public override PostProcessingPassEvent PassEvent => PostProcessingPassEvent.AfterRendering;
 
-		public override void ApplyProperties(Material material, CustomPostProcessRenderContext context)
+		public override void ApplyProperties(Material material, RenderingData renderingData)
 		{
 			float brightnessValue;
 			float gammaValue;
