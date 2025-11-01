@@ -2,6 +2,11 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 {
     internal sealed class LogHistogram
     {
+        class PassData
+        {
+
+        }
+
         public const int rangeMin = -9; // ev
         public const int rangeMax = 9; // ev
 
@@ -15,16 +20,19 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
             data = new ComputeBuffer(k_Bins, sizeof(uint));
         }
 
-        public void Generate(CommandBuffer cmd, ref RenderingData renderingData, RTHandle source)
+        public void Generate(RenderGraphModule.RenderGraph renderGraph, UniversalResourceData frameData)
         {
             uint threadX, threadY, threadZ;
-            var scaleOffsetRes = GetHistogramScaleOffsetRes(renderingData);
+            var scaleOffsetRes = GetHistogramScaleOffsetRes(frameData);
             var compute = PostProcessResources.Instance.computeShaders.exposureHistogram;
-            cmd.BeginSample("LogHistogram");
 
             // Clear the buffer on every frame as we use it to accumulate luminance values on each frame
             int kernel = compute.FindKernel("KEyeHistogramClear");
-            cmd.SetComputeBufferParam(compute, kernel, "_HistogramBuffer", data);
+            using(var builder = renderGraph.AddComputePass<PassData>("Histogram", out var d))
+            {
+            }
+            /*
+                cmd.SetComputeBufferParam(compute, kernel, "_HistogramBuffer", data);
             compute.GetKernelThreadGroupSizes(kernel, out threadX, out threadY, out threadZ);
             cmd.DispatchCompute(compute, kernel, Mathf.CeilToInt(k_Bins / (float)threadX), 1, 1);
 
@@ -40,16 +48,15 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
                 Mathf.CeilToInt(scaleOffsetRes.w / 2f / threadY),
                 1
             );
-
-            cmd.EndSample("LogHistogram");
+            */
         }
 
-        public Vector4 GetHistogramScaleOffsetRes(RenderingData renderingData)
+        public Vector4 GetHistogramScaleOffsetRes(UniversalResourceData frameData)
         {
             float diff = rangeMax - rangeMin;
             float scale = 1f / diff;
             float offset = -rangeMin * scale;
-            RenderTextureDescriptor descriptor = renderingData.cameraData.cameraTargetDescriptor;
+            var descriptor = frameData.cameraColor.GetDescriptor();
             return new Vector4(scale, offset, descriptor.width, descriptor.height);
         }
 

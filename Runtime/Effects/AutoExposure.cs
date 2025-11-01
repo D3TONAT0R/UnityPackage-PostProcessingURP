@@ -164,10 +164,9 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			var urpAdditionalData = context.Get<UniversalCameraData>();
 			var perCameraData = GetPerCameraData(urpAdditionalData);
 
-			//TODO
-			/*
-			perCameraData.logHistogram.Generate(cmd, ref renderingData, source);
+			perCameraData.logHistogram.Generate(renderGraph, frameData);
 
+			/*
 			RenderTexture currentAutoExposure = PerformLookup(cmd, ref renderingData, perCameraData, urpAdditionalData.resetHistory);
 
 			blitMaterial.SetTexture("_AutoExposureTex", currentAutoExposure);
