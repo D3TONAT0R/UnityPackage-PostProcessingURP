@@ -76,9 +76,10 @@ Shader "Hidden/PostProcessing/Compression"
     			{
 					for(int y = 0; y < BLOCK_SIZE; y++)
 					{
-						float3 tex = saturate(sample(_BlitTexture, (K + float2(x, y) + 0.5) / _ScreenParams.xy).rgb);
+						float3 tex = sample(_BlitTexture, (K + float2(x, y) + 0.5) / _ScreenParams.xy).rgb;
 						//Apply gamma boost
 						tex = pow(tex, gamma);
+						tex = saturate(tex);
 						val += tex * DCTcoeff(k, (float2(x, y) + 0.5) / BLOCK_SIZE) * (k.x < 0.5 ? SQRT2 : 1.0) * (k.y < 0.5 ? SQRT2 : 1.0);
 					}
 				}

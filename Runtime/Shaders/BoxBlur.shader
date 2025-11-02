@@ -25,8 +25,8 @@ Shader "Hidden/PostProcessing/BoxBlur"
                     float2 (0, (blurPixels / _BlitTexture_TexelSize.w) *
                         (i / BLUR_SAMPLES_RANGE));
                 color +=
-                    SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp,
-                        input.texcoord + sampleOffset).rgb;
+                    saturate(SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp,
+                        input.texcoord + sampleOffset).rgb);
             }
 
             float4 original = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, input.texcoord);
@@ -48,8 +48,8 @@ Shader "Hidden/PostProcessing/BoxBlur"
                     float2 ((blurPixels / _BlitTexture_TexelSize.z) *
                         (i / BLUR_SAMPLES_RANGE), 0);
                 color +=
-                    SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp,
-                        input.texcoord + sampleOffset).rgb;
+                    saturate(SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp,
+                        input.texcoord + sampleOffset).rgb);
             }
 
             float4 original = SAMPLE_TEXTURE2D(_BlitTexture, sampler_LinearClamp, input.texcoord);

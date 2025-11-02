@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine.Rendering.RenderGraphModule;
+using UnityEngine.Rendering.Universal.PostProcessing.RenderGraph;
 
 namespace UnityEngine.Rendering.Universal.PostProcessing
 {
@@ -36,16 +37,11 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public abstract string ShaderName { get; }
 
-		public virtual void AddPasses(List<int> passes)
-		{
-			passes.Add(0);
-		}
+		public abstract PostProcessingPassEvent PassEvent { get; }
 
 		public virtual bool IgnorePostProcessingFlag => false;
 
 		public virtual ScriptableRenderPassInput Requirements => ScriptableRenderPassInput.Color;
-
-		public abstract PostProcessingPassEvent PassEvent { get; }
 
 		public RenderPassEvent RenderPassEvent
 		{
@@ -68,23 +64,19 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		protected bool initialized = false;
 		protected Material blitMaterial;
 
+		protected string typeName;
+		protected string colorTextureName;
+
+		protected static readonly int blendPropertyId = Shader.PropertyToID("_Blend");
+
 		public virtual bool IsActive() => blend.value > 0;
 
 		public virtual bool IsTileCompatible() => true;
 
-		public virtual void Setup(CustomPostProcessPass pass, RenderingData renderingData, List<int> passes)
+		protected virtual void Initialize(CustomPostProcessPass pass)
 		{
-			Initialize();
-			if(blitMaterial)
-			{
-				blitMaterial.SetFloat("_Blend", blend.value);
-				SetMaterialProperties(blitMaterial);
-			}
-			AddPasses(passes);
-		}
-
-		protected virtual void Initialize()
-		{
+			typeName = GetType().Name;
+			colorTextureName = typeName + "_ColorTexture";
 			if(!blitMaterial && ShaderName != null)
 			{
 				var shader = Shader.Find(ShaderName);
@@ -95,42 +87,61 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 				else
 				{
 					blitMaterial = new Material(shader);
-#if UNITY_EDITOR
-					//pass.renderer.ReferenceShader(shader);
-#endif
 				}
 			}
 			initialized = true;
 		}
 
-		public virtual void Render(RenderGraphModule.RenderGraph renderGraph, UniversalResourceData frameData, ContextContainer context)
+		public void Render(CustomPostProcessPass pass, RenderGraphModule.RenderGraph renderGraph,
+			UniversalResourceData frameData, ContextContainer context)
 		{
-			if(!BeginRender(context)) return;
+			if(!BeginRender(pass, context)) return;
+#if UNITY_EDITOR
+			if(blitMaterial && blitMaterial.shader != null) pass.RenderFeature.ReferenceShader(blitMaterial.shader);
+#endif
+			RenderEffect(pass, renderGraph, frameData, context);
+		}
+
+		protected virtual void RenderEffect(CustomPostProcessPass pass, RenderGraphModule.RenderGraph renderGraph,
+			UniversalResourceData frameData, ContextContainer context)
+		{
 			Blit(renderGraph, frameData);
 		}
 
-		protected bool BeginRender(ContextContainer context)
+		protected bool BeginRender(CustomPostProcessPass pass, ContextContainer context)
 		{
 			var data = context.Get<UniversalCameraData>();
-			if(data != null && (data.isSceneViewCamera && !VisibleInSceneView) || !data.postProcessEnabled) return false;
+			if(data != null && (data.isSceneViewCamera && !VisibleInSceneView) || !data.postProcessEnabled)
+				return false;
 			if(blend.value <= 0.0f)
 				return false;
 			if(!initialized)
 			{
-				Initialize();
+				Initialize(pass);
 			}
 			if(!blitMaterial)
 			{
 				Debug.LogWarning("Shader missing");
 				return false;
 			}
-			SetMaterialProperties(blitMaterial);
+			InitializeBlitMaterial();
 			return true;
+		}
+
+		private void InitializeBlitMaterial()
+		{
+			blitMaterial.SetFloat(blendPropertyId, blend.value);
+			SetMaterialProperties(blitMaterial);
+		}
+
+		public virtual void SetMaterialProperties(Material mat)
+		{
+
 		}
 
 		protected void Blit(RenderGraphModule.RenderGraph renderGraph, UniversalResourceData frameData, int passIndex = 0)
 		{
-			using(var builder = renderGraph.AddRasterRenderPass<PassData>(GetType().Name, out var passData))
+			using(var builder = renderGraph.AddRasterRenderPass<PassData>(typeName, out var passData))
 			{
 				passData.source = frameData.activeColorTexture;
 				passData.material = blitMaterial;
@@ -140,7 +151,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 				TextureDesc desc = frameData.activeColorTexture.GetDescriptor(renderGraph);
 				desc.depthBufferBits = 0;
-				desc.name = GetType().Name + "_ColorTexture";
+				desc.name = colorTextureName;
 				TextureHandle destination = renderGraph.CreateTexture(desc);
 
 				builder.SetRenderAttachment(destination, 0);
@@ -156,11 +167,6 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		protected virtual void ExecuteRasterRenderPass(PassData data, RasterGraphContext context)
 		{
 			Blitter.BlitTexture(context.cmd, data.source, new Vector4(1, 1, 0, 0), data.material, data.passIndex);
-		}
-
-		public virtual void SetMaterialProperties(Material mat)
-		{
-			mat.SetFloat("_Blend", blend.value);
 		}
 
 		protected override void OnDisable()

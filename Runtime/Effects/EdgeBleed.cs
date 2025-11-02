@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using UnityEngine.Rendering.Universal.PostProcessing.RenderGraph;
 
 namespace UnityEngine.Rendering.Universal.PostProcessing
 {
@@ -20,12 +21,6 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			return base.IsActive() && (horizontalBleed.value > 0 || verticalBleed.value > 0);
 		}
 
-		public override void AddPasses(List<int> passes)
-		{
-			if(verticalBleed.value > 0) passes.Add(0);
-			if(horizontalBleed.value > 0) passes.Add(1);
-		}
-
 		public override void SetMaterialProperties(Material material)
 		{
 			material.SetFloat("_Blend", -blend.value);
@@ -34,9 +29,9 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			material.SetFloat("_VerticalBlur", verticalBleed.value);
 		}
 
-		public override void Render(RenderGraphModule.RenderGraph renderGraph, UniversalResourceData frameData, ContextContainer context)
+		protected override void RenderEffect(CustomPostProcessPass pass, RenderGraphModule.RenderGraph renderGraph,
+			UniversalResourceData frameData, ContextContainer context)
 		{
-			if(!BeginRender(context)) return;
 			Blit(renderGraph, frameData, 0);
 			Blit(renderGraph, frameData, 1);
 		}

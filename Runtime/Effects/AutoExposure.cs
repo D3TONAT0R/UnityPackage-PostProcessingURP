@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine.Rendering.RenderGraphModule;
+using UnityEngine.Rendering.Universal.PostProcessing.RenderGraph;
 
 namespace UnityEngine.Rendering.Universal.PostProcessing
 {
@@ -161,9 +162,9 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 				&& SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.RFloat);
 		}
 
-		public override void Render(RenderGraphModule.RenderGraph renderGraph, UniversalResourceData frameData, ContextContainer context)
+		protected override void RenderEffect(CustomPostProcessPass pass, RenderGraphModule.RenderGraph renderGraph,
+			UniversalResourceData frameData, ContextContainer context)
 		{
-			if(!BeginRender(context)) return;
 			var urpAdditionalData = context.Get<UniversalCameraData>();
 			var perCameraData = GetPerCameraData(urpAdditionalData);
 

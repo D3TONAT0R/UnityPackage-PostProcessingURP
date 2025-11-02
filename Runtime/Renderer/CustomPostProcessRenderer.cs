@@ -1,19 +1,21 @@
+using System;
 using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.Assertions;
-using UnityEngine.Rendering.Universal;
+using System.Diagnostics;
+using System.Linq;
 
 namespace UnityEngine.Rendering.Universal.PostProcessing
 {
 	[System.Serializable]
 	public class EffectOrderingList : ISerializationCallbackReceiver
 	{
-		private List<System.Type> effectTypes = new List<System.Type>();
+		private List<Type> effectTypes = new List<System.Type>();
 
 		[SerializeField]
 		private List<string> serializedTypeNames = new List<string>();
 
-		public bool AddIfMissing(System.Type effectType)
+		public int Hash { get; private set; }
+
+		public bool AddIfMissing(Type effectType)
 		{
 			if(!effectTypes.Contains(effectType))
 			{
@@ -26,8 +28,11 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			}
 		}
 
-		public int GetPosition(System.Type effectType)
+		public int GetPosition(Type effectType)
 		{
+#if UNITY_EDITOR
+			AddIfMissing(effectType);
+#endif
 			int index = effectTypes.IndexOf(effectType);
 			if(index >= 0) return index;
 			else return effectTypes.Count - 1;
@@ -38,7 +43,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			effectTypes.Clear();
 			foreach(var s in serializedTypeNames)
 			{
-				var t = System.Type.GetType(s);
+				var t = Type.GetType(s);
 				if(t != null)
 				{
 					effectTypes.Add(t);
@@ -48,6 +53,15 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 					Debug.LogError($"Failed to find effect of type '{s}', removing it from the ordering list.");
 				}
 			}
+			int h = effectTypes.Count * 123;
+			unchecked
+			{
+				for(int i = 0; i < effectTypes.Count; i++)
+				{
+					h += effectTypes[i].GetHashCode() * i;
+				}
+			}
+			Hash = h;
 		}
 
 		public void OnBeforeSerialize()
@@ -73,22 +87,26 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			public EffectOrderingList afterRendering = new EffectOrderingList();
 		}
 
+		public EffectOrdering effectOrdering = new EffectOrdering();
+		public List<Shader> shaderRefs = new List<Shader>();
+
 		private CustomPostProcessPass beforeSkyboxPass;
 		private CustomPostProcessPass beforeTransparentsPass;
-		private CustomPostProcessPass beforePostProcessPass;
-		private CustomPostProcessPass afterPostProcessPass;
+		private CustomPostProcessPass beforePostProcessingPass;
+		private CustomPostProcessPass afterPostProcessingPass;
 		private CustomPostProcessPass afterRenderingPass;
 
-		public EffectOrdering effectOrdering = new EffectOrdering();
-
-		public List<Shader> shaderRefs = new List<Shader>();
+		[NonSerialized]
+		public List<CustomPostProcessVolumeComponent> volumeEffects;
 
 		public override void Create()
 		{
+			var stack = VolumeManager.instance.stack;
+			volumeEffects = EnumerateCustomEffects(stack).ToList();
 			beforeSkyboxPass = new CustomPostProcessPass(this, RenderPassEvent.BeforeRenderingSkybox, effectOrdering.beforeSkybox);
 			beforeTransparentsPass = new CustomPostProcessPass(this, RenderPassEvent.BeforeRenderingTransparents, effectOrdering.beforeTransparents);
-			beforePostProcessPass = new CustomPostProcessPass(this, RenderPassEvent.BeforeRenderingPostProcessing, effectOrdering.beforePostProcess);
-			afterPostProcessPass = new CustomPostProcessPass(this, RenderPassEvent.AfterRenderingPostProcessing, effectOrdering.afterPostProcess);
+			beforePostProcessingPass = new CustomPostProcessPass(this, RenderPassEvent.BeforeRenderingPostProcessing, effectOrdering.beforePostProcess);
+			afterPostProcessingPass = new CustomPostProcessPass(this, RenderPassEvent.AfterRenderingPostProcessing, effectOrdering.afterPostProcess);
 			afterRenderingPass = new CustomPostProcessPass(this, RenderPassEvent.AfterRendering, effectOrdering.afterRendering);
 		}
 
@@ -96,11 +114,12 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		{
 			renderer.EnqueuePass(beforeSkyboxPass);
 			renderer.EnqueuePass(beforeTransparentsPass);
-			renderer.EnqueuePass(beforePostProcessPass);
-			renderer.EnqueuePass(afterPostProcessPass);
+			renderer.EnqueuePass(beforePostProcessingPass);
+			renderer.EnqueuePass(afterPostProcessingPass);
 			renderer.EnqueuePass(afterRenderingPass);
 		}
 
+		[Conditional("UNITY_EDITOR")]
 		public void ReferenceShader(Shader shader)
 		{
 #if UNITY_EDITOR
@@ -111,6 +130,21 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			}
 			UnityEditor.EditorUtility.SetDirty(this);
 #endif
+		}
+
+		private IEnumerable<CustomPostProcessVolumeComponent> EnumerateCustomEffects(VolumeStack stack)
+		{
+			var components = (Dictionary<System.Type, VolumeComponent>)typeof(VolumeStack)
+				.GetField("components", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+				.GetValue(stack);
+			foreach(var kv in components)
+			{
+				var comp = kv.Value;
+				if(comp is CustomPostProcessVolumeComponent customComponent)
+				{
+					yield return customComponent;
+				}
+			}
 		}
 	}
 }

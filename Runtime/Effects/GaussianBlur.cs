@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine.Rendering.RenderGraphModule;
 using UnityEngine.Rendering.RenderGraphModule.Util;
+using UnityEngine.Rendering.Universal.PostProcessing.RenderGraph;
 
 namespace UnityEngine.Rendering.Universal.PostProcessing
 {
@@ -54,22 +55,9 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			tempDescriptor = new RenderTextureDescriptor(Screen.width, Screen.height, RenderTextureFormat.ARGB32, 0, 0);
 		}
 
-		public override void Setup(CustomPostProcessPass pass, RenderingData renderingData, List<int> passes)
+		protected override void RenderEffect(CustomPostProcessPass pass, RenderGraphModule.RenderGraph renderGraph,
+			UniversalResourceData frameData, ContextContainer context)
 		{
-			var targetDescriptor = renderingData.cameraData.cameraTargetDescriptor;
-			tempDescriptor.colorFormat = targetDescriptor.colorFormat;
-			int ds = downsample.value;
-			tempDescriptor.width = targetDescriptor.width >> ds;
-			tempDescriptor.height = targetDescriptor.height >> ds;
-			RenderingUtils.ReAllocateIfNeeded(ref tempRT_A, tempDescriptor, name: "Temp_Downsample_A");
-			RenderingUtils.ReAllocateIfNeeded(ref tempRT_B, tempDescriptor, name: "Temp_Downsample_B");
-			base.Setup(pass, renderingData, passes);
-		}
-
-		public override void Render(RenderGraphModule.RenderGraph renderGraph, UniversalResourceData frameData, ContextContainer context)
-		{
-			if(!BeginRender(context)) return;
-
 			int iterations = blurIterations.value;
 			float size = blurSize.value;
 

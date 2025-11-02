@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.RenderGraphModule.Util;
 using UnityEngine.Rendering.Universal;
+using UnityEngine.Rendering.Universal.PostProcessing.RenderGraph;
 
 namespace UnityEngine.Rendering.Universal.PostProcessing
 {
@@ -31,24 +32,8 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public override ScriptableRenderPassInput Requirements => ScriptableRenderPassInput.Depth | ScriptableRenderPassInput.Normal;
 
-		protected override void OnEnable()
-		{
-			base.OnEnable();
-			edgeDetectionDescriptor = new RenderTextureDescriptor(Screen.width, Screen.height, RenderTextureFormat.ARGB32, 0, 0);
-		}
-
-		public override void Setup(CustomPostProcessPass pass, RenderingData renderingData, List<int> passes)
-		{
-			base.Setup(pass, renderingData, passes);
-			var targetDescriptor = renderingData.cameraData.cameraTargetDescriptor;
-			edgeDetectionDescriptor.width = targetDescriptor.width;
-			edgeDetectionDescriptor.height = targetDescriptor.height;
-			RenderingUtils.ReAllocateIfNeeded(ref edgeDetectionTarget, edgeDetectionDescriptor, name: "Temp_EdgeDetection");
-		}
-
 		public override void SetMaterialProperties(Material material)
 		{
-			base.SetMaterialProperties(material);
 			material.SetFloat("_Range", range.value);
 			material.SetFloat("_RangeFadeStart", rangeFadeStart.value);
 			material.SetFloat("_DepthThreshold", depthThreshold.value);
@@ -60,9 +45,9 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			material.SetInt("_LineWidth", Mathf.Clamp(lineWidth.value, 1, 32));
 		}
 
-		public override void Render(RenderGraphModule.RenderGraph renderGraph, UniversalResourceData frameData, ContextContainer context)
+		protected override void RenderEffect(CustomPostProcessPass pass, RenderGraphModule.RenderGraph renderGraph,
+			UniversalResourceData frameData, ContextContainer context)
 		{
-			if(!BeginRender(context)) return;
 			var desc = frameData.activeColorTexture.GetDescriptor(renderGraph);
 			var edgeDetectionTarget = renderGraph.CreateTexture(in desc);
 			using(var builder = renderGraph.AddRasterRenderPass<PassData>("Edge Detection Composite", out var d))

@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using UnityEngine.Rendering.Universal.PostProcessing.RenderGraph;
 
 namespace UnityEngine.Rendering.Universal.PostProcessing
 {
@@ -19,12 +20,6 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			return base.IsActive() && (horizontalBlur.value > 0 || verticalBlur.value > 0);
 		}
 
-		public override void AddPasses(List<int> passes)
-		{
-			if(verticalBlur.value > 0) passes.Add(0);
-			if(horizontalBlur.value > 0) passes.Add(1);
-		}
-
 		public override PostProcessingPassEvent PassEvent => injectionPoint.value;
 
 		public override void SetMaterialProperties(Material material)
@@ -34,9 +29,9 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			material.SetFloat("_VerticalBlur", verticalBlur.value);
 		}
 
-		public override void Render(RenderGraphModule.RenderGraph renderGraph, UniversalResourceData frameData, ContextContainer context)
+		protected override void RenderEffect(CustomPostProcessPass pass, RenderGraphModule.RenderGraph renderGraph,
+			UniversalResourceData frameData, ContextContainer context)
 		{
-			if(!BeginRender(context)) return;
 			Blit(renderGraph, frameData, 0);
 			Blit(renderGraph, frameData, 1);
 		}
