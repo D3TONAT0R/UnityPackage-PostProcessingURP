@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using UnityEngine.Rendering.RenderGraphModule;
-using UnityEngine.Rendering.RenderGraphModule.Util;
-using UnityEngine.Rendering.Universal.PostProcessing.RenderGraph;
 
 namespace UnityEngine.Rendering.Universal.PostProcessing
 {
@@ -39,21 +35,11 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		public IntParameter blurIterations = new ClampedIntParameter(1, 1, 16);
 		public FloatParameter blurSize = new FloatParameter(3f);
 
-		private RenderTextureDescriptor tempDescriptor;
-		private RTHandle tempRT_A;
-		private RTHandle tempRT_B;
-
 		public override string ShaderName => "Hidden/PostProcessing/GaussianBlur";
 
 		public override PostProcessingPassEvent InjectionPoint => PostProcessingPassEvent.AfterPostProcessing;
 
 		public override bool VisibleInSceneView => false;
-
-		protected override void OnEnable()
-		{
-			base.OnEnable();
-			tempDescriptor = new RenderTextureDescriptor(Screen.width, Screen.height, RenderTextureFormat.ARGB32, 0, 0);
-		}
 
 		protected override void RenderEffect(CustomPostProcessPass pass, RenderGraphModule.RenderGraph renderGraph,
 			UniversalResourceData frameData, ContextContainer context)
@@ -114,13 +100,6 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 			//TODO: blit resolution does not match screen when downsampled
 			Blit(renderGraph, frameData, (int)Pass.FinalBlit);
-		}
-
-		protected override void OnDestroy()
-		{
-			base.OnDestroy();
-			if(tempRT_A != null) tempRT_A.Release();
-			if(tempRT_B != null) tempRT_B.Release();
 		}
 	}
 }

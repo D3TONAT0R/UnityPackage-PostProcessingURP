@@ -1,7 +1,3 @@
-using UnityEngine;
-using UnityEngine.Rendering;
-using UnityEngine.Rendering.Universal;
-
 namespace UnityEngine.Rendering.Universal.PostProcessing
 {
 	[VolumeComponentMenu("Post-processing/Invert Colors")]

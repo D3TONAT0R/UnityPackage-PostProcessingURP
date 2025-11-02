@@ -1,10 +1,3 @@
-using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.Rendering;
-using UnityEngine.Rendering.RenderGraphModule.Util;
-using UnityEngine.Rendering.Universal;
-using UnityEngine.Rendering.Universal.PostProcessing.RenderGraph;
-
 namespace UnityEngine.Rendering.Universal.PostProcessing
 {
 	[VolumeComponentMenu("Post-processing/Outline")]
@@ -20,9 +13,6 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		public ColorParameter lineColor = new ColorParameter(Color.black, false);
 
 		public ClampedFloatParameter distortion = new ClampedFloatParameter(0.005f, 0, 0.02f, false);
-
-		private RenderTextureDescriptor edgeDetectionDescriptor;
-		private RTHandle edgeDetectionTarget;
 
 		public override bool IgnorePostProcessingFlag => false;
 
@@ -86,12 +76,6 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			blitMaterial.SetTexture("_EdgeDetectionTexture", edgeDetectionTarget);
 			base.Render(feature, renderingData, cmd, source, destination, 1);
 			*/
-		}
-
-		protected override void OnDestroy()
-		{
-			base.OnDestroy();
-			edgeDetectionTarget?.Release();
 		}
 	}
 }

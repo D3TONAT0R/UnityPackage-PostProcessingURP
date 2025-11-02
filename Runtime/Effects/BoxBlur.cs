@@ -1,9 +1,3 @@
-using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.Rendering;
-using UnityEngine.Rendering.Universal;
-using UnityEngine.Rendering.Universal.PostProcessing.RenderGraph;
-
 namespace UnityEngine.Rendering.Universal.PostProcessing
 {
 	[VolumeComponentMenu("Post-processing/Box Blur")]

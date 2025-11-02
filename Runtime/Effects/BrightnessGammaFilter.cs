@@ -1,9 +1,4 @@
-﻿using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.Rendering;
-using UnityEngine.Rendering.Universal;
-
-namespace UnityEngine.Rendering.Universal.PostProcessing
+﻿namespace UnityEngine.Rendering.Universal.PostProcessing
 {
 	[VolumeComponentMenu("Post-processing/Brightness & Gamma Filter")]
 	public class BrightnessGammaFilter : CustomPostProcessVolumeComponent
