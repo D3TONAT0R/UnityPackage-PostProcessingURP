@@ -9,6 +9,8 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public override string ShaderName => "Hidden/PostProcessing/BoxBlur";
 
+		public override bool VisibleInSceneView => false;
+
 		public override bool IsActive()
 		{
 			return base.IsActive() && (horizontalBlur.value > 0 || verticalBlur.value > 0);

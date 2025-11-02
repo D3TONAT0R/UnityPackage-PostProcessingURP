@@ -9,9 +9,10 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public override PostProcessingPassEvent InjectionPoint => PostProcessingPassEvent.AfterPostProcessing;
 
+		//public override bool SupportsBlending => true;
+
 		public override void SetMaterialProperties(Material material)
 		{
-			base.SetMaterialProperties(material);
 			material.SetInt("_VertResolution", verticalResolution.value);
 		}
 	}

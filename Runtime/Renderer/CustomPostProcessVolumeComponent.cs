@@ -1,7 +1,5 @@
 using System;
-using System.Collections.Generic;
 using UnityEngine.Rendering.RenderGraphModule;
-using UnityEngine.Rendering.Universal.PostProcessing.RenderGraph;
 
 namespace UnityEngine.Rendering.Universal.PostProcessing
 {
@@ -23,7 +21,12 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			public int passIndex;
 		}
 
-		[Space(10)]
+		//These Will be drawn manually with a custom editor
+
+		[HideInInspector]
+		public BoolParameter enabled = new BoolParameter(false);
+		//Only visible if SupportsBlending is true
+		[HideInInspector]
 		public ClampedFloatParameter blend = new ClampedFloatParameter(0f, 0, 1, true);
 
 		public abstract string ShaderName { get; }
@@ -31,6 +34,10 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		public abstract PostProcessingPassEvent InjectionPoint { get; }
 
 		public virtual bool IgnorePostProcessingFlag => false;
+
+		public virtual bool SupportsBlending => false;
+
+		public virtual bool VisibleInSceneView => true;
 
 		public virtual ScriptableRenderPassInput Requirements => ScriptableRenderPassInput.Color;
 
@@ -50,8 +57,6 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			}
 		}
 
-		public virtual bool VisibleInSceneView => true;
-
 		protected bool initialized = false;
 		protected Material blitMaterial;
 
@@ -60,7 +65,13 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		protected static readonly int blendPropertyId = Shader.PropertyToID("_Blend");
 
-		public virtual bool IsActive() => blend.value > 0;
+		public virtual bool IsActive() {
+			if(!enabled.value)
+				return false;
+			if(SupportsBlending)
+				return blend.value > 0;
+			return true;
+		}
 
 		public virtual bool IsTileCompatible() => true;
 
@@ -102,9 +113,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		protected bool BeginRender(CustomPostProcessPass pass, ContextContainer context)
 		{
 			var data = context.Get<UniversalCameraData>();
-			if(data != null && (data.isSceneViewCamera && !VisibleInSceneView) || !data.postProcessEnabled)
-				return false;
-			if(blend.value <= 0.0f)
+			if(data != null && (data.isSceneViewCamera && !VisibleInSceneView) || (!IgnorePostProcessingFlag && !data.postProcessEnabled))
 				return false;
 			if(!initialized)
 			{
@@ -121,7 +130,8 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		private void InitializeBlitMaterial()
 		{
-			blitMaterial.SetFloat(blendPropertyId, blend.value);
+			float blendValue = SupportsBlending ? blend.value : 1.0f;
+			blitMaterial.SetFloat(blendPropertyId, blendValue);
 			SetMaterialProperties(blitMaterial);
 		}
 
