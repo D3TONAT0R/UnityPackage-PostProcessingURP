@@ -20,10 +20,6 @@ namespace UnityEditor.Rendering.Universal.PostProcessing
 		public override void OnInspectorGUI()
 		{
 			var comp = volumeComponent as CustomPostProcessVolumeComponent;
-			if(!comp.VisibleInSceneView)
-			{
-				EditorGUILayout.HelpBox("This effect is not visible in the Scene View by default.", MessageType.None);
-			}
 			PropertyField(enabled);
 			if(comp.SupportsBlending)
 			{
@@ -31,6 +27,10 @@ namespace UnityEditor.Rendering.Universal.PostProcessing
 			}
 			GUILayout.Space(5);
 			base.OnInspectorGUI();
+			if(!comp.VisibleInSceneView)
+			{
+				EditorGUILayout.HelpBox("This effect is not visible in the Scene View by default.", MessageType.Info);
+			}
 		}
 	}
 }
