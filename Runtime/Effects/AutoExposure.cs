@@ -152,7 +152,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public override string ShaderName => "Hidden/PostProcessing/AutoExposureBlit";
 
-		public override PostProcessingPassEvent PassEvent => PostProcessingPassEvent.BeforePostProcessing;
+		public override PostProcessingPassEvent InjectionPoint => PostProcessingPassEvent.BeforePostProcessing;
 
 		public override bool IsActive()
 		{

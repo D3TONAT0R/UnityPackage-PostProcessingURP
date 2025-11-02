@@ -5,15 +5,6 @@ using UnityEngine.Rendering.Universal.PostProcessing.RenderGraph;
 
 namespace UnityEngine.Rendering.Universal.PostProcessing
 {
-	public enum PostProcessingPassEvent
-	{
-		BeforeSkybox = RenderPassEvent.BeforeRenderingSkybox,
-		BeforeTransparents = RenderPassEvent.BeforeRenderingTransparents,
-		BeforePostProcessing = RenderPassEvent.BeforeRenderingPostProcessing,
-		AfterPostProcessing = RenderPassEvent.AfterRenderingPostProcessing,
-		AfterRendering = RenderPassEvent.AfterRendering
-	}
-
 	[System.Serializable]
 	public class PassEventParameter : VolumeParameter<PostProcessingPassEvent>
 	{
@@ -37,7 +28,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public abstract string ShaderName { get; }
 
-		public abstract PostProcessingPassEvent PassEvent { get; }
+		public abstract PostProcessingPassEvent InjectionPoint { get; }
 
 		public virtual bool IgnorePostProcessingFlag => false;
 
@@ -47,7 +38,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		{
 			get
 			{
-				return PassEvent switch
+				return InjectionPoint switch
 				{
 					PostProcessingPassEvent.BeforeSkybox => RenderPassEvent.BeforeRenderingSkybox,
 					PostProcessingPassEvent.BeforeTransparents => RenderPassEvent.BeforeRenderingTransparents,

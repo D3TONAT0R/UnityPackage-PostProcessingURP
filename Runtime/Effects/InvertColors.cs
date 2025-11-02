@@ -9,6 +9,6 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 	{
 		public override string ShaderName => "Hidden/PostProcessing/InvertColors";
 
-		public override PostProcessingPassEvent PassEvent => PostProcessingPassEvent.AfterPostProcessing;
+		public override PostProcessingPassEvent InjectionPoint => PostProcessingPassEvent.AfterPostProcessing;
 	}
 }

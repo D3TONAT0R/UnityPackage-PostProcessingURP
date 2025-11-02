@@ -103,11 +103,11 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		{
 			var stack = VolumeManager.instance.stack;
 			volumeEffects = EnumerateCustomEffects(stack).ToList();
-			beforeSkyboxPass = new CustomPostProcessPass(this, RenderPassEvent.BeforeRenderingSkybox, effectOrdering.beforeSkybox);
-			beforeTransparentsPass = new CustomPostProcessPass(this, RenderPassEvent.BeforeRenderingTransparents, effectOrdering.beforeTransparents);
-			beforePostProcessingPass = new CustomPostProcessPass(this, RenderPassEvent.BeforeRenderingPostProcessing, effectOrdering.beforePostProcess);
-			afterPostProcessingPass = new CustomPostProcessPass(this, RenderPassEvent.AfterRenderingPostProcessing, effectOrdering.afterPostProcess);
-			afterRenderingPass = new CustomPostProcessPass(this, RenderPassEvent.AfterRendering, effectOrdering.afterRendering);
+			beforeSkyboxPass = new CustomPostProcessPass(this, PostProcessingPassEvent.BeforeSkybox, effectOrdering.beforeSkybox);
+			beforeTransparentsPass = new CustomPostProcessPass(this, PostProcessingPassEvent.BeforeTransparents, effectOrdering.beforeTransparents);
+			beforePostProcessingPass = new CustomPostProcessPass(this, PostProcessingPassEvent.BeforePostProcessing, effectOrdering.beforePostProcess);
+			afterPostProcessingPass = new CustomPostProcessPass(this, PostProcessingPassEvent.AfterPostProcessing, effectOrdering.afterPostProcess);
+			afterRenderingPass = new CustomPostProcessPass(this, PostProcessingPassEvent.AfterRendering, effectOrdering.afterRendering);
 		}
 
 		public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)

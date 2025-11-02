@@ -45,7 +45,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public override string ShaderName => "Hidden/PostProcessing/GaussianBlur";
 
-		public override PostProcessingPassEvent PassEvent => PostProcessingPassEvent.AfterPostProcessing;
+		public override PostProcessingPassEvent InjectionPoint => PostProcessingPassEvent.AfterPostProcessing;
 
 		public override bool VisibleInSceneView => false;
 

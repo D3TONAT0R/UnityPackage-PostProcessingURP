@@ -11,7 +11,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public override string ShaderName => "Hidden/PostProcessing/Pixelate";
 
-		public override PostProcessingPassEvent PassEvent => PostProcessingPassEvent.AfterPostProcessing;
+		public override PostProcessingPassEvent InjectionPoint => PostProcessingPassEvent.AfterPostProcessing;
 
 		public override void SetMaterialProperties(Material material)
 		{

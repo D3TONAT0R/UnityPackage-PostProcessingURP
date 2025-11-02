@@ -31,7 +31,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public override string ShaderName => "Hidden/PostProcessing/TextureOverlay";
 
-		public override PostProcessingPassEvent PassEvent => injectionPoint.value;
+		public override PostProcessingPassEvent InjectionPoint => injectionPoint.value;
 
 		public override void SetMaterialProperties(Material material)
 		{

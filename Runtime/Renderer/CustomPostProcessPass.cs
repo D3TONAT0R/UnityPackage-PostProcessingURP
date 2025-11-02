@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine.Rendering.RenderGraphModule;
@@ -17,14 +18,17 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public EffectOrderingList OrderingList { get; }
 
+		public PostProcessingPassEvent InjectionPoint { get; }
+
 		private List<CustomPostProcessVolumeComponent> sortedEffectsList = new List<CustomPostProcessVolumeComponent>();
 		private int lastSortingHash;
 
-		public CustomPostProcessPass(CustomPostProcessRenderer renderFeature, RenderPassEvent injectionPoint, EffectOrderingList orderingList)
+		public CustomPostProcessPass(CustomPostProcessRenderer renderFeature, PostProcessingPassEvent injectionPoint, EffectOrderingList orderingList)
 		{
 			RenderFeature = renderFeature;
 			OrderingList = orderingList;
-			renderPassEvent = injectionPoint;
+			InjectionPoint = injectionPoint;
+			renderPassEvent = injectionPoint.GetRenderPassEvent();
 		}
 
 		private IEnumerable<CustomPostProcessVolumeComponent> GetSortedEffects()
@@ -40,7 +44,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			bool listChanged = OrderingList.Hash != lastSortingHash;
 			foreach(var effect in RenderFeature.volumeEffects)
 			{
-				if(effect.RenderPassEvent != renderPassEvent) continue;
+				if(effect.InjectionPoint != InjectionPoint) continue;
 				if(!sortedEffectsList.Contains(effect))
 				{
 					sortedEffectsList.Add(effect);
@@ -49,14 +53,13 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			}
 			if(listChanged)
 			{
-				Debug.Log("hoi");
 				sortedEffectsList.Sort((a, b) => OrderingList.GetPosition(a.GetType()).CompareTo(OrderingList.GetPosition(b.GetType())));
 				lastSortingHash = OrderingList.Hash;
 			}
 
 			foreach(var effect in sortedEffectsList)
 			{
-				if(effect.RenderPassEvent != renderPassEvent) continue;
+				if(effect.InjectionPoint != InjectionPoint) continue;
 				try
 				{
 					effect.Render(this, renderGraph, frameData, context);

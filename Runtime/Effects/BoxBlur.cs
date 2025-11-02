@@ -20,7 +20,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			return base.IsActive() && (horizontalBlur.value > 0 || verticalBlur.value > 0);
 		}
 
-		public override PostProcessingPassEvent PassEvent => injectionPoint.value;
+		public override PostProcessingPassEvent InjectionPoint => injectionPoint.value;
 
 		public override void SetMaterialProperties(Material material)
 		{

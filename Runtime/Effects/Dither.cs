@@ -15,7 +15,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public override string ShaderName => "Hidden/PostProcessing/Dither";
 
-		public override PostProcessingPassEvent PassEvent => PostProcessingPassEvent.AfterPostProcessing;
+		public override PostProcessingPassEvent InjectionPoint => PostProcessingPassEvent.AfterPostProcessing;
 
 		private static Texture2D DefaultDitherTexture
 		{

@@ -13,7 +13,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public override string ShaderName => "Hidden/PostProcessing/WorldSpaceTextureOverlay";
 
-		public override PostProcessingPassEvent PassEvent => PostProcessingPassEvent.BeforeTransparents;
+		public override PostProcessingPassEvent InjectionPoint => PostProcessingPassEvent.BeforeTransparents;
 
 		public override void SetMaterialProperties(Material material)
 		{
