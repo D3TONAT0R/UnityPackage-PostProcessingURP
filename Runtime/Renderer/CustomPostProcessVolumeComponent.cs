@@ -140,7 +140,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 				builder.UseTexture(passData.source);
 
-				TextureDesc desc = frameData.activeColorTexture.GetDescriptor(renderGraph);
+				TextureDesc desc = passData.source.GetDescriptor(renderGraph);
 				desc.depthBufferBits = 0;
 				desc.name = colorTextureName;
 				TextureHandle destination = renderGraph.CreateTexture(desc);

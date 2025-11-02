@@ -32,6 +32,11 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public override ScriptableRenderPassInput Requirements => ScriptableRenderPassInput.Depth | ScriptableRenderPassInput.Normal;
 
+		public override bool IsActive()
+		{
+			return base.IsActive() && backgroundColor.value.a > 0 && lineColor.value.a > 0;
+		}
+
 		public override void SetMaterialProperties(Material material)
 		{
 			material.SetFloat("_Range", range.value);
@@ -56,6 +61,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 				d.material = blitMaterial;
 				d.passIndex = 0;
 				//builder.AllowGlobalStateModification(true);
+				builder.UseTexture(d.source);
 				builder.SetRenderAttachment(edgeDetectionTarget, 0);
 				builder.SetGlobalTextureAfterPass(edgeDetectionTarget, Shader.PropertyToID("_EdgeDetectionTexture"));
 				builder.SetRenderFunc<PassData>(ExecuteRasterRenderPass);
@@ -68,6 +74,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 				d.passIndex = 1;
 				//builder.AllowGlobalStateModification(true);
 				var destination = renderGraph.CreateTexture(in desc);
+				builder.UseTexture(d.source);
 				builder.SetRenderAttachment(destination, 0);
 				builder.UseTexture(edgeDetectionTarget);
 				builder.SetGlobalTextureAfterPass(edgeDetectionTarget, Shader.PropertyToID("_EdgeDetectionTexture"));

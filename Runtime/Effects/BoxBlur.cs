@@ -24,7 +24,6 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public override void SetMaterialProperties(Material material)
 		{
-			base.SetMaterialProperties(material);
 			material.SetFloat("_HorizontalBlur", horizontalBlur.value);
 			material.SetFloat("_VerticalBlur", verticalBlur.value);
 		}
