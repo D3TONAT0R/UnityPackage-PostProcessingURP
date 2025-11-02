@@ -113,7 +113,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 		protected bool BeginRender(CustomPostProcessPass pass, ContextContainer context)
 		{
 			var data = context.Get<UniversalCameraData>();
-			if(data != null && (data.isSceneViewCamera && !VisibleInSceneView) || (!IgnorePostProcessingFlag && !data.postProcessEnabled))
+			if(!CheckEffectVisibilityForCamera(data))
 				return false;
 			if(!initialized)
 			{
@@ -125,6 +125,28 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 				return false;
 			}
 			InitializeBlitMaterial();
+			return true;
+		}
+
+		private bool CheckEffectVisibilityForCamera(UniversalCameraData data)
+		{
+			if(data == null) return true;
+#if UNITY_EDITOR
+			if(data.isSceneViewCamera)
+			{
+				if(UnityEditor.SceneView.currentDrawingSceneView.cameraMode.name == "Post Processing")
+				{
+					//Always draw effect in scene view when the view mode is set to "Post Processing"
+					//TODO: scene cameras in custom draw modes are always with HDR disabled
+					return true;
+				}
+				if(data.isSceneViewCamera && !VisibleInSceneView) return false;
+			}
+#endif
+			if(!IgnorePostProcessingFlag && !data.postProcessEnabled)
+			{
+				return false;
+			}
 			return true;
 		}
 

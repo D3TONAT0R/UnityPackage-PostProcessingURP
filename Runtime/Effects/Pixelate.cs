@@ -9,7 +9,9 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 
 		public override PostProcessingPassEvent InjectionPoint => PostProcessingPassEvent.AfterPostProcessing;
 
-		//public override bool SupportsBlending => true;
+		public override bool SupportsBlending => true;
+
+		public override bool VisibleInSceneView => false;
 
 		public override void SetMaterialProperties(Material material)
 		{

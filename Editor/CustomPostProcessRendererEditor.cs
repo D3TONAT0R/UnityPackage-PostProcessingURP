@@ -3,7 +3,7 @@ using UnityEditorInternal;
 using UnityEngine;
 using UnityEngine.Rendering.Universal.PostProcessing;
 
-namespace UnityEditor.Rendering.Universal.PostProcess
+namespace UnityEditor.Rendering.Universal.PostProcessing
 {
 	[CustomEditor(typeof(CustomPostProcessRenderer))]
 	public class CustomPostProcessRendererEditor : Editor

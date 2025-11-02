@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.Rendering.Universal.PostProcessing;
 
-namespace UnityEditor.Rendering.Universal.PostProcessing.Editor
+namespace UnityEditor.Rendering.Universal.PostProcessing
 {
 	[CustomEditor(typeof(CustomPostProcessVolumeComponent), true)]
 	public class CustomPostProcessVolumeComponentEditor : VolumeComponentEditor
