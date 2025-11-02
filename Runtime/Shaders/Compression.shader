@@ -84,7 +84,7 @@ Shader "Hidden/PostProcessing/Compression"
 					}
 				}
         
-				return float4(val/4.,0.);
+				return float4(val/4.0, 0.0);
 			}
 
 			ENDHLSL
@@ -140,12 +140,19 @@ Shader "Hidden/PostProcessing/Compression"
 				return color;
 			}
 
+			float4 stopNan(float4 v)
+			{
+				if (isnan(v.x) || isnan(v.y) || isnan(v.z))
+					return float4(0, 0, 0, 1);
+				return v;
+			}
+
 			float4 Frag(Varyings i) : SV_Target
 			{
 				UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i);
 
 				float4 color = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_LinearClamp, i.texcoord, 0);
-				float4 jpeg = reconstruct(i.texcoord);
+				float4 jpeg = stopNan(reconstruct(i.texcoord));
 				color = lerp(color, jpeg, _Blend);
 				return color;
 			}

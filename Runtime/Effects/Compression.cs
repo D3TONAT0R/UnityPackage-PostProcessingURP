@@ -1,8 +1,4 @@
-using System.Collections.Generic;
-using UnityEngine;
 using UnityEngine.Rendering.RenderGraphModule;
-using UnityEngine.Rendering.Universal;
-using UnityEngine.Rendering.Universal.PostProcessing.RenderGraph;
 
 namespace UnityEngine.Rendering.Universal.PostProcessing
 {
@@ -28,21 +24,6 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 			material.SetFloat("_DCTGamma", compressionGamma.value);
 		}
 
-		class DCTData : ContextItem
-		{
-			public TextureHandle dctTexture;
-
-			public override void Reset()
-			{
-				dctTexture = TextureHandle.nullHandle;
-			}
-		}
-
-		class CompressionPassData : PassData
-		{
-			public TextureHandle dctTexture;
-		}
-
 		protected override void RenderEffect(CustomPostProcessPass pass, RenderGraphModule.RenderGraph renderGraph,
 			UniversalResourceData frameData, ContextContainer context)
 		{
@@ -60,8 +41,6 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 				TextureHandle dct = renderGraph.CreateTexture(desc);
 
 				builder.SetRenderAttachment(dct, 0);
-				var dctData = context.Create<DCTData>();
-				dctData.dctTexture = dct;
 
 				builder.AllowPassCulling(false);
 				builder.AllowGlobalStateModification(true);
@@ -69,39 +48,6 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 				builder.SetGlobalTextureAfterPass(dct, Shader.PropertyToID("_DCTTexture"));
 			}
 			Blit(renderGraph, frameData, 1);
-			/*
-			using(var builder = renderGraph.AddRasterRenderPass<CompressionPassData>("Compression", out var passData))
-			{
-				passData.source = frameData.activeColorTexture;
-				passData.material = blitMaterial;
-				passData.passIndex = 1;
-
-				builder.UseTexture(passData.source);
-
-				TextureDesc desc = frameData.activeColorTexture.GetDescriptor(renderGraph);
-				desc.depthBufferBits = 0;
-				desc.name = "Output";
-				TextureHandle destination = renderGraph.CreateTexture(desc);
-
-				builder.SetRenderAttachment(destination, 0);
-
-				builder.AllowPassCulling(false);
-				builder.SetRenderFunc<CompressionPassData>((data, ctx) =>
-				{
-					//blitMaterial.SetTexture("_DCTTexture", renderGraph.ImportTexture(context.Get<DCTData>().dctTexture));
-					//blitMaterial.SetTexture("_DCTTexture", renderGraph.ImportTexture(data.dctTexture));
-					blitMaterial.SetTexture("_DCTTexture", data.dctTexture);
-					Blitter.BlitTexture(ctx.cmd, data.source, new Vector4(1, 1, 0, 0), data.material, data.passIndex);
-				});
-
-				frameData.cameraColor = destination;
-			}
-			//TODO
-			/*
-			feature.Blit(cmd, from, dctHandle, blitMaterial, 0);
-			cmd.SetGlobalTexture("_DCTTexture", dctHandle);
-			feature.Blit(cmd, from, to, blitMaterial, 1);
-			*/
 		}
 	}
 }
