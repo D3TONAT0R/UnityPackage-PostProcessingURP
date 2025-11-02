@@ -36,6 +36,7 @@ namespace UnityEngine.Rendering.Universal.PostProcessing
 				builder.UseTexture(passData.source);
 
 				TextureDesc desc = frameData.activeColorTexture.GetDescriptor(renderGraph);
+				desc.colorFormat = Experimental.Rendering.GraphicsFormat.B10G11R11_UFloatPack32;
 				desc.depthBufferBits = 0;
 				desc.name = "DCTTexture";
 				TextureHandle dct = renderGraph.CreateTexture(desc);
