@@ -2,7 +2,7 @@
   "name": "com.github.d3tonat0r.postprocessingurp",
   "version": "0.2.0",
   "displayName": "PostProcessing URP",
-  "description": "Provides a post processing render feature that allows for easy integration of custom post processing effects and also includes common post processing effects missing from the default universal render pipeline.\n\nEffects included in this package:\n\n\u25AA Auto Exposure\n\u25AA Blur (Box & Gaussian)\n\u25AA Brightness/Gamma Adjustments\n\u25AA Image Compression\n\u25AA Dithering\n\u25AA Edge Bleed\n\u25AA Invert Colors\n\u25AA Outline\n\u25AA Pixelate\n\u25AA Texture Overlay\n\u25AA World Space Texture",
+  "description": "Provides a custom render feature and volume component classes streamlining the creation of custom post processing effects in the Universal Render Pipeline similar to the Post Processing Stack from the built-in render pipeline.",
   "unity": "2022.3",
   "category": "",
   "author": {

@@ -1,5 +1,5 @@
 {
-    "name": "D3T.PostprocessingURP.Runtime",
+    "name": "PostprocessingURP.Runtime",
     "rootNamespace": "UnityEngine.Rendering.Universal.PostProcessing",
     "references": [
         "GUID:df380645f10b7bc4b97d4f5eb6303d95",
