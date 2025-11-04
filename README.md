@@ -25,4 +25,47 @@ Add the following line to your project's `Packages/manifest.json`:
 
 ## Writing custom effects
 
-- to do
+Custom volume effects are written using the provided `CustomPostProcessVolumeComponent` class.
+
+```cs
+using UnityEngine.Rendering.RenderGraphModule;
+
+namespace UnityEngine.Rendering.Universal.PostProcessing
+{
+	[VolumeComponentMenu("Post-processing/Dither")]
+	public class Dither : CustomPostProcessVolumeComponent
+	{
+        // Volume properties must be defined using VolumeParameter types to support volume blending.
+		public ColorParameter color = new ColorParameter(Color.white, false, false, false);
+		public FloatParameter intensity = new FloatParameter(1);
+
+		public override string ShaderName => "Path/To/Custom/Shader";
+
+        // Injection point where the effect will be rendered
+		public override PostProcessingPassEvent InjectionPoint => PostProcessingPassEvent.AfterPostProcessing;
+
+        // Override to control when the effect should be rendered.
+        public override bool IsActive()
+		{
+			return base.IsActive() && intensity.value.a > 0;
+		}
+
+		public override void SetMaterialProperties(Material material)
+		{
+            // Set effect material properties here
+            material.SetColor("_Color", color.value);
+			material.SetFloat("_Intensity_", intensity.value);
+		}
+
+        // Optional override to perform additional work other than a normal blit operation.
+        protected override void RenderEffect(CustomPostProcessPass pass, RenderGraph renderGraph,
+			UniversalResourceData frameData, ContextContainer context)
+		{
+            // Blit twice using two material passes
+			Blit(renderGraph, frameData, 0);
+			Blit(renderGraph, frameData, 1);
+		}
+	}
+}
+
+```
