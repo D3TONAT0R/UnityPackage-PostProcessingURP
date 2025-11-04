@@ -1,6 +1,6 @@
 {
   "name": "com.github.d3tonat0r.postprocessingurp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "displayName": "PostProcessing URP",
   "description": "Provides a custom render feature and volume component classes streamlining the creation of custom post processing effects in the Universal Render Pipeline similar to the Post Processing Stack from the built-in render pipeline.",
   "unity": "2022.3",
