@@ -1,6 +1,9 @@
 # PostProcessing for URP
 
 Provides a custom render feature and volume component classes streamlining the creation of custom post processing effects in the Universal Render Pipeline similar to the Post Processing Stack from the built-in render pipeline.
+
+> [!WARNING]
+> This package is currently in development.
  
 ## Installation
 
@@ -29,43 +32,42 @@ Custom volume effects are written using the provided `CustomPostProcessVolumeCom
 
 ```cs
 using UnityEngine.Rendering.RenderGraphModule;
+using UnityEngine.Rendering.Universal.PostProcessing;
 
-namespace UnityEngine.Rendering.Universal.PostProcessing
+// Set name to show in "Add Override" menu
+[VolumeComponentMenu("Post-processing/(Effect Name)")]
+public class CustomEffect : CustomPostProcessVolumeComponent
 {
-	[VolumeComponentMenu("Post-processing/Dither")]
-	public class Dither : CustomPostProcessVolumeComponent
+	// Volume properties must be defined using VolumeParameter types to support volume blending.
+	public ColorParameter color = new ColorParameter(Color.white, false, false, false);
+	public FloatParameter intensity = new FloatParameter(1);
+
+	// Name of the shader to use for the effect
+	public override string ShaderName => "Hidden/PostProcessing/CustomEffect";
+
+	// Injection point where the effect will be rendered
+	public override PostProcessingPassEvent InjectionPoint => PostProcessingPassEvent.AfterPostProcessing;
+
+	// Optional: Override to control when the effect should be rendered.
+	public override bool IsActive()
 	{
-        // Volume properties must be defined using VolumeParameter types to support volume blending.
-		public ColorParameter color = new ColorParameter(Color.white, false, false, false);
-		public FloatParameter intensity = new FloatParameter(1);
+		return base.IsActive() && intensity.value.a > 0;
+	}
 
-		public override string ShaderName => "Path/To/Custom/Shader";
+	// Set effect material properties here
+	public override void SetMaterialProperties(Material material)
+	{
+		material.SetColor("_Color", color.value);
+		material.SetFloat("_Intensity", intensity.value);
+	}
 
-        // Injection point where the effect will be rendered
-		public override PostProcessingPassEvent InjectionPoint => PostProcessingPassEvent.AfterPostProcessing;
-
-        // Override to control when the effect should be rendered.
-        public override bool IsActive()
-		{
-			return base.IsActive() && intensity.value.a > 0;
-		}
-
-		public override void SetMaterialProperties(Material material)
-		{
-            // Set effect material properties here
-            material.SetColor("_Color", color.value);
-			material.SetFloat("_Intensity_", intensity.value);
-		}
-
-        // Optional override to perform additional work other than a normal blit operation.
-        protected override void RenderEffect(CustomPostProcessPass pass, RenderGraph renderGraph,
-			UniversalResourceData frameData, ContextContainer context)
-		{
-            // Blit twice using two material passes
-			Blit(renderGraph, frameData, 0);
-			Blit(renderGraph, frameData, 1);
-		}
+	// Optional: Override to perform additional work other than a normal blit operation.
+	protected override void RenderEffect(CustomPostProcessPass pass, RenderGraph renderGraph,
+		UniversalResourceData frameData, ContextContainer context)
+	{
+		// Blit twice using two material passes
+		Blit(renderGraph, frameData, 0);
+		Blit(renderGraph, frameData, 1);
 	}
 }
-
 ```
